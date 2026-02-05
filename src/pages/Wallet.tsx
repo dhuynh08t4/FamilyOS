@@ -22,6 +22,7 @@ const Wallet: React.FC = () => {
     const [profiles, setProfiles] = useState<Record<string, Profile>>({});
     const [loading, setLoading] = useState(true);
     const [totalSpent, setTotalSpent] = useState(0);
+    const [totalIncome, setTotalIncome] = useState(0);
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [newTrans, setNewTrans] = useState({
         amount: '',
@@ -64,6 +65,11 @@ const Wallet: React.FC = () => {
                     .filter(t => t.type === 'expense')
                     .reduce((acc, curr) => acc + curr.amount, 0);
                 setTotalSpent(spent);
+
+                const income = transData
+                    .filter(t => t.type === 'income')
+                    .reduce((acc, curr) => acc + curr.amount, 0);
+                setTotalIncome(income);
             }
 
             // 2. Fetch profiles for display names
@@ -95,8 +101,12 @@ const Wallet: React.FC = () => {
 
         // Update local total spent
         const deletedTrans = transactions.find(t => t.id === id);
-        if (deletedTrans && deletedTrans.type === 'expense') {
-            setTotalSpent(prev => prev - deletedTrans.amount);
+        if (deletedTrans) {
+            if (deletedTrans.type === 'expense') {
+                setTotalSpent(prev => prev - deletedTrans.amount);
+            } else if (deletedTrans.type === 'income') {
+                setTotalIncome(prev => prev - deletedTrans.amount);
+            }
         }
 
         const { error } = await supabase.from('transactions').delete().eq('id', id);
@@ -214,12 +224,12 @@ const Wallet: React.FC = () => {
 
                 <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl p-4 flex justify-between items-center border border-primary/10">
                     <div className="space-y-1">
-                        <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Monthly Budget</p>
-                        <p className="text-xl font-bold">$2,000.00</p>
+                        <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Monthly Budget (Income)</p>
+                        <p className="text-xl font-bold">${totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                     </div>
                     <div className="size-12 rounded-full border-4 border-primary/20 flex items-center justify-center relative">
-                        <div className="absolute inset-0 border-4 border-primary rounded-full" style={{ clipPath: `inset(0 0 ${100 - (totalSpent / 2000 * 100)}% 0)` }}></div>
-                        <span className="text-[10px] font-bold text-primary">{Math.round((totalSpent / 2000) * 100)}%</span>
+                        <div className="absolute inset-0 border-4 border-primary rounded-full" style={{ clipPath: `inset(0 0 ${totalIncome > 0 ? Math.max(0, 100 - (totalSpent / totalIncome * 100)) : 100}% 0)` }}></div>
+                        <span className="text-[10px] font-bold text-primary">{totalIncome > 0 ? Math.round((totalSpent / totalIncome) * 100) : 0}%</span>
                     </div>
                 </div>
             </header>

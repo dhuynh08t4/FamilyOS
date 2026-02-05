@@ -27,6 +27,15 @@ const users = [
         username: 'dhuynh08t4',
         role: 'admin'
     },
+
+    {
+        email: 'daihuynh510@gmail.com',
+        password: '1',
+        full_name: 'Lê Đại Huỳnh',
+        nice_name: 'Huỳnh',
+        username: 'daihuynh510',
+        role: 'admin'
+    },
     {
         email: 'minhtanh91@gmail.com',
         password: '1',

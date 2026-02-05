@@ -129,8 +129,12 @@ const Layout: React.FC = () => {
                                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                                 className="flex items-center gap-3 p-1.5 pr-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
                             >
-                                <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black">
-                                    {profile?.full_name?.[0] || 'U'}
+                                <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black overflow-hidden border border-slate-100 dark:border-slate-800">
+                                    {profile?.avatar_url ? (
+                                        <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                                    ) : (
+                                        profile?.full_name?.[0] || 'U'
+                                    )}
                                 </div>
                                 <div className="hidden xl:block text-left">
                                     <p className="text-sm font-black dark:text-white leading-tight">{profile?.nice_name || profile?.full_name}</p>
@@ -143,9 +147,18 @@ const Layout: React.FC = () => {
                                 <>
                                     <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)}></div>
                                     <div className="absolute right-0 mt-3 w-64 bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 py-3 z-50 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
-                                        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 mb-2">
-                                            <p className="text-sm font-black truncate">{profile?.full_name}</p>
-                                            <p className="text-xs font-medium text-slate-400">@{profile?.username}</p>
+                                        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 mb-2 flex items-center gap-4">
+                                            <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black overflow-hidden border border-slate-100 dark:border-slate-800">
+                                                {profile?.avatar_url ? (
+                                                    <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    profile?.full_name?.[0] || 'U'
+                                                )}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-black truncate dark:text-white">{profile?.full_name}</p>
+                                                <p className="text-xs font-medium text-slate-400">@{profile?.username}</p>
+                                            </div>
                                         </div>
                                         <button
                                             onClick={() => { navigate('/settings'); setIsProfileOpen(false); }}

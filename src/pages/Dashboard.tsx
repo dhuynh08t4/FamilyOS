@@ -1,7 +1,9 @@
 import React from 'react';
-import { Bell, Search, ScanLine, Note, MessageSquare, Clock } from 'lucide-react';
+import { Bell, Search, ScanLine, Notebook as Note, MessageSquare, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
+    const navigate = useNavigate();
     return (
         <div className="px-4 py-4 space-y-6">
             {/* Top Navigation Bar */}
@@ -9,7 +11,7 @@ const Dashboard: React.FC = () => {
                 <div className="flex items-center gap-3">
                     <div
                         className="size-10 rounded-full bg-cover bg-center border-2 border-white dark:border-slate-800 shadow-sm"
-                        style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuCTORBZwfG6sfxSD54HNHvO-4DXvkgu4m0ocqZ__nBEH7mGlMeB43Assnp3PesQyMhOsOKFKDOk1xyRhYBN56QXcK6Fe3fJPYPF_4DLiW8M4SMTdzn97_HrKdVet-iJ1b6nPbVN8y2_Mmln8wOctZiOiBJczNBd5GXuglCiDd4pkrjM7nCvqkfaAe_cIYwpr6dY0Ag2gnSm882UuYyygi3eqkczey72kTPXjL1iSMoo9HqKrxLvBxYRu8Yodr62bZXlbaUwmPaoCWdb")' }}
+                        style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuCTORBZwfG6sfxSD54HNHvO-4DXvkgu4m0ocqZ__nBEH7mGlMeB43Assnp3PesQyMhOsOKFKDOk1xyRhYBN56QXcK6Fe3fJPYPF_4DLiW8M4SMTdzn97_HrKdVet-iJ1b6nPbVN8y2_Mmln8wOctZiOiBJczNBd5GXugnCiDd4pkrjM7nCvqkfaAe_cIYwpr6dY0Ag2gnSm882UuYyygi3eqkczey72kTPXjL1iSMoo9HqKrxLvBxYRu8Yodr62bZXlbaUwmPaoCWdb")' }}
                     />
                     <div>
                         <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">Good morning</p>
@@ -30,19 +32,28 @@ const Dashboard: React.FC = () => {
             <section>
                 <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-3">Quick Actions</h2>
                 <div className="grid grid-cols-3 gap-3">
-                    <button className="flex flex-col items-center justify-center gap-2 p-4 bg-primary text-white rounded-xl shadow-lg shadow-primary/20 transition-transform active:scale-95">
+                    <button
+                        onClick={() => navigate('/scan')}
+                        className="flex flex-col items-center justify-center gap-2 p-4 bg-primary text-white rounded-xl shadow-lg shadow-primary/20 transition-transform active:scale-95"
+                    >
                         <div className="size-12 rounded-full bg-white/20 flex items-center justify-center">
                             <ScanLine size={28} />
                         </div>
                         <span className="text-xs font-bold">Scan AI</span>
                     </button>
-                    <button className="flex flex-col items-center justify-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 transition-transform active:scale-95">
+                    <button
+                        onClick={() => navigate('/notes')}
+                        className="flex flex-col items-center justify-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 transition-transform active:scale-95"
+                    >
                         <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center">
                             <Note size={28} className="text-primary" />
                         </div>
                         <span className="text-xs font-bold">New Note</span>
                     </button>
-                    <button className="flex flex-col items-center justify-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 transition-transform active:scale-95">
+                    <button
+                        onClick={() => navigate('/chat')}
+                        className="flex flex-col items-center justify-center gap-2 p-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 transition-transform active:scale-95"
+                    >
                         <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center">
                             <MessageSquare size={28} className="text-primary" />
                         </div>

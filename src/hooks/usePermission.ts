@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Profile } from '../types';
+import type { Profile } from '../types';
 
 export function usePermission(profile: Profile | null) {
     return useMemo(() => {

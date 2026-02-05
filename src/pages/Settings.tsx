@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { User, Shield, Key, Users, ChevronRight, LogOut, Save, Loader2, CheckCircle2, AtSign, UserCircle, XCircle, Camera, Upload, Edit3, X, Scissors, Check } from 'lucide-react';
+import { User, Shield, Key, Users, LogOut, Save, Loader2, CheckCircle2, AtSign, UserCircle, XCircle, Camera, Upload, Edit3, X, Scissors, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Profile, UserRole } from '../types';
 import { usePermission } from '../hooks/usePermission';
@@ -479,9 +479,18 @@ const Settings: React.FC = () => {
                                 </div>
                                 <h1 className="text-xl font-black">Crop Avatar</h1>
                             </div>
-                            <button onClick={() => setCropImage(null)} className="text-slate-400 hover:text-slate-600 transition-colors">
-                                <X size={24} />
-                            </button>
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={handleAvatarClick}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-primary transition-colors"
+                                >
+                                    <Upload size={14} />
+                                    Change
+                                </button>
+                                <button onClick={() => setCropImage(null)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                    <X size={24} />
+                                </button>
+                            </div>
                         </header>
 
                         <div className="relative h-[400px] bg-slate-900">
@@ -490,7 +499,7 @@ const Settings: React.FC = () => {
                                 crop={crop}
                                 zoom={zoom}
                                 aspect={1}
-                                shape="round"
+                                cropShape="round"
                                 onCropChange={setCrop}
                                 onZoomChange={setZoom}
                                 onCropComplete={onCropComplete}
@@ -529,7 +538,6 @@ const Settings: React.FC = () => {
                                     </>
                                 )}
                             </button>
-                            <p className="text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Targeting 128px &bull; Auto-optimized &lt; 20kB</p>
                         </footer>
                     </div>
                 </div>

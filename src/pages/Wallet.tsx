@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, ShoppingCart, Bolt, Film, Coffee, Plus, ScanLine, ChevronDown, Trash2, Edit2, Loader2, Utensils, Heart, Home, Package, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Calendar, ShoppingCart, Bolt, Film, Plus, ScanLine, ChevronDown, Trash2, Loader2, Utensils, Heart, Home, Package, MoreHorizontal } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Transaction, Profile } from '../types';

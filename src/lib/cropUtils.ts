@@ -41,6 +41,6 @@ export async function getCroppedImg(
     return new Promise((resolve) => {
         canvas.toBlob((blob) => {
             resolve(blob)
-        }, 'image/jpeg', 0.6) // 0.6 quality at 128px should easily be under 20kB
+        }, 'image/jpeg', 0.8) // 0.6 quality at 128px should easily be under 20kB
     })
 }

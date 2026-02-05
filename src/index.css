@@ -4,6 +4,11 @@
   --primary: #5449e9;
   --background-light: #f6f6f8;
   --background-dark: #07070b;
+  --bg-surface: var(--background-light);
+}
+
+.dark {
+  --bg-surface: var(--background-dark);
 }
 
 @theme {
@@ -32,5 +37,5 @@ body {
 
 /* Glassmorphism Classes */
 .glass {
-  @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 dark:border-slate-800/10 shadow-xl;
+  @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 dark:border-primary/5 shadow-xl;
 }

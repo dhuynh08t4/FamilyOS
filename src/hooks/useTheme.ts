@@ -4,17 +4,17 @@ import { supabase } from '../lib/supabase';
 export type ThemeMode = 'light' | 'dark' | 'auto';
 export type ThemeColor = 'indigo' | 'slate' | 'rose' | 'amber' | 'emerald' | 'cyan' | 'violet' | 'fuchsia' | 'orange' | 'blue';
 
-export const themeColors: Record<ThemeColor, string> = {
-    indigo: '#5449e9',
-    slate: '#475569',
-    rose: '#e11d48',
-    amber: '#d97706',
-    emerald: '#059669',
-    cyan: '#06b6d4',
-    violet: '#8b5cf6',
-    fuchsia: '#d946ef',
-    orange: '#f97316',
-    blue: '#3b82f6',
+export const themeColors: Record<ThemeColor, { light: string; dark: string }> = {
+    indigo: { light: '#5449e9', dark: '#818cf8' },
+    slate: { light: '#475569', dark: '#94a3b8' },
+    rose: { light: '#e11d48', dark: '#fb7185' },
+    amber: { light: '#d97706', dark: '#fbbf24' },
+    emerald: { light: '#059669', dark: '#34d399' },
+    cyan: { light: '#06b6d4', dark: '#22d3ee' },
+    violet: { light: '#8b5cf6', dark: '#a78bfa' },
+    fuchsia: { light: '#d946ef', dark: '#f472b6' },
+    orange: { light: '#f97316', dark: '#fb923c' },
+    blue: { light: '#3b82f6', dark: '#60a5fa' },
 };
 
 const updateFavicon = (color: string) => {
@@ -41,25 +41,31 @@ const updateFavicon = (color: string) => {
 
 export const useTheme = (userId?: string) => {
     const applyTheme = (color: ThemeColor, mode: ThemeMode) => {
-        // Apply color
         const root = document.documentElement;
-        const colorValue = themeColors[color];
-        root.style.setProperty('--primary', colorValue);
-        updateFavicon(colorValue);
 
-        // Apply mode
+        // Determine mode
+        let actualMode: 'light' | 'dark' = 'light';
         if (mode === 'dark') {
-            root.classList.add('dark');
-        } else if (mode === 'light') {
-            root.classList.remove('dark');
-        } else {
-            // Auto
-            if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                root.classList.add('dark');
-            } else {
-                root.classList.remove('dark');
-            }
+            actualMode = 'dark';
+        } else if (mode === 'auto') {
+            actualMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
+
+        // Apply mode class
+        if (actualMode === 'dark') {
+            root.classList.add('dark');
+        } else {
+            root.classList.remove('dark');
+        }
+
+        // Apply color based on mode
+        const colorValue = themeColors[color][actualMode];
+        root.style.setProperty('--primary', colorValue);
+
+        // Set derived colors (transparencies) for better dark mode support
+        root.style.setProperty('--primary-muted', actualMode === 'dark' ? `${colorValue}33` : `${colorValue}1A`);
+
+        updateFavicon(colorValue);
     };
 
     const fetchAndApplyTheme = async () => {

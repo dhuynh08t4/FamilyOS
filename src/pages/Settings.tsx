@@ -566,7 +566,7 @@ const Settings: React.FC = () => {
                                             key={`global-${color}`}
                                             onClick={() => setGlobalThemeColor(color)}
                                             className={`size-10 rounded-2xl transition-all hover:scale-110 active:scale-95 ${globalThemeColor === color ? 'ring-2 ring-primary ring-offset-4 dark:ring-offset-slate-900 shadow-lg' : 'opacity-60 hover:opacity-100'}`}
-                                            style={{ backgroundColor: themeColors[color] }}
+                                            style={{ backgroundColor: themeColors[color].light }}
                                         />
                                     ))}
                                 </div>

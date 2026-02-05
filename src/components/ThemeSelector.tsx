@@ -120,7 +120,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({ userId, onClose, v
                                 key={color}
                                 onClick={() => saveTheme(color, themeMode)}
                                 className={`group relative size-12 rounded-2xl transition-all hover:scale-110 active:scale-95 flex items-center justify-center ${themeColor === color ? 'ring-2 ring-primary ring-offset-4 dark:ring-offset-slate-900 shadow-lg' : ''}`}
-                                style={{ backgroundColor: themeColors[color] }}
+                                style={{ backgroundColor: themeColors[color].light }}
                                 title={color}
                             >
                                 {themeColor === color && <Check size={20} className="text-white" />}
@@ -178,7 +178,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({ userId, onClose, v
                             key={color}
                             onClick={() => saveTheme(color, themeMode)}
                             className={`size-6 rounded-lg transition-all hover:scale-110 flex items-center justify-center ${themeColor === color ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-slate-900' : ''}`}
-                            style={{ backgroundColor: themeColors[color] }}
+                            style={{ backgroundColor: themeColors[color].light }}
                         >
                             {themeColor === color && <Check size={12} className="text-white" />}
                         </button>

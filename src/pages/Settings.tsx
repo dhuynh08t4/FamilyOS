@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { User, Shield, Key, Users, ChevronRight, LogOut, Save, Loader2, CheckCircle2, AtSign, UserCircle, XCircle, Camera, Upload, Edit3, X } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { User, Shield, Key, Users, ChevronRight, LogOut, Save, Loader2, CheckCircle2, AtSign, UserCircle, XCircle, Camera, Upload, Edit3, X, Scissors, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Profile, UserRole } from '../types';
 import { usePermission } from '../hooks/usePermission';
-import imageCompression from 'browser-image-compression';
+import Cropper from 'react-easy-crop';
+import { getCroppedImg } from '../lib/cropUtils';
 
 const Settings: React.FC = () => {
     const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -20,6 +21,12 @@ const Settings: React.FC = () => {
     const [fullName, setFullName] = useState('');
     const [niceName, setNiceName] = useState('');
     const [username, setUsername] = useState('');
+
+    // Cropper State
+    const [cropImage, setCropImage] = useState<string | null>(null);
+    const [crop, setCrop] = useState({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
 
     const permissions = usePermission(myProfile);
 
@@ -43,7 +50,6 @@ const Settings: React.FC = () => {
                 const current = profilesData.find(p => p.id === user.id);
                 if (current) {
                     setMyProfile(current);
-                    // Default to self for editing
                     handleSelectProfile(current);
                 }
             }
@@ -68,7 +74,6 @@ const Settings: React.FC = () => {
         setFullName(profile.full_name || '');
         setNiceName(profile.nice_name || '');
         setUsername(profile.username || '');
-        // Scroll to edit section on mobile
         if (window.innerWidth < 768) {
             document.getElementById('profile-edit-section')?.scrollIntoView({ behavior: 'smooth' });
         }
@@ -80,25 +85,46 @@ const Settings: React.FC = () => {
 
     const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file || !selectedProfile) return;
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.addEventListener('load', () => {
+            setCropImage(reader.result as string);
+        });
+        reader.readAsDataURL(file);
+    };
+
+    const onCropComplete = useCallback((_croppedArea: any, croppedAreaPixels: any) => {
+        setCroppedAreaPixels(croppedAreaPixels);
+    }, []);
+
+    const handleCropSave = async () => {
+        if (!cropImage || !croppedAreaPixels || !selectedProfile) return;
 
         setUpdating('avatar');
         try {
-            const options = { maxSizeMB: 0.2, maxWidthOrHeight: 256, useWebWorker: true };
-            const compressedFile = await imageCompression(file, options);
+            // Get cropped blob (128px, low quality for < 20kB)
+            const croppedBlob = await getCroppedImg(cropImage, croppedAreaPixels, 128);
+            if (!croppedBlob) throw new Error('Failed to crop image');
 
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${selectedProfile.id}-${Math.random()}.${fileExt}`;
+            const fileName = `${selectedProfile.id}-${Date.now()}.jpg`;
             const filePath = `avatars/${fileName}`;
 
+            // Upload to 'avatar' bucket
             const { error: uploadError } = await supabase.storage
                 .from('avatar')
-                .upload(filePath, compressedFile);
+                .upload(filePath, croppedBlob, {
+                    contentType: 'image/jpeg',
+                    cacheControl: '3600',
+                    upsert: true
+                });
 
             if (uploadError) throw uploadError;
 
+            // Get Public URL
             const { data: { publicUrl } } = supabase.storage.from('avatar').getPublicUrl(filePath);
 
+            // Update profile
             const { error: updateError } = await supabase
                 .from('profiles')
                 .update({ avatar_url: publicUrl })
@@ -111,10 +137,11 @@ const Settings: React.FC = () => {
             if (selectedProfile.id === myProfile?.id) setMyProfile(updated);
             setProfiles(profiles.map(p => p.id === selectedProfile.id ? updated : p));
 
-            setMessage({ type: 'success', text: 'Avatar updated!' });
+            setMessage({ type: 'success', text: `Avatar updated! (${Math.round(croppedBlob.size / 1024)}kB)` });
+            setCropImage(null);
             setTimeout(() => setMessage(null), 3000);
         } catch (error: any) {
-            setMessage({ type: 'error', text: error.message || 'Failed to upload avatar' });
+            setMessage({ type: 'error', text: error.message || 'Failed to upload' });
         } finally {
             setUpdating(null);
             if (avatarInputRef.current) avatarInputRef.current.value = '';
@@ -198,6 +225,7 @@ const Settings: React.FC = () => {
 
     return (
         <div className="px-4 py-6 max-w-4xl mx-auto space-y-8 pb-32">
+            {/* Header */}
             <header className="flex flex-col md:flex-row items-center gap-6 bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
                 <div className="absolute top-0 right-0 size-64 bg-primary/5 rounded-full -mr-20 -mt-20 blur-3xl transition-colors group-hover:bg-primary/10"></div>
 
@@ -212,7 +240,7 @@ const Settings: React.FC = () => {
                 </div>
 
                 <div className="flex-1 min-w-0 text-center md:text-left relative">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Logged in as</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 text-slate-400">Logged in as</p>
                     <h1 className="text-3xl font-black truncate leading-tight dark:text-white">{myProfile?.full_name}</h1>
                     <div className="flex items-center justify-center md:justify-start gap-3 mt-2">
                         <span className="px-3 py-1 rounded-xl bg-primary text-white text-[11px] font-black uppercase tracking-widest shadow-lg shadow-primary/20">{myProfile?.role}</span>
@@ -269,7 +297,7 @@ const Settings: React.FC = () => {
                                 )}
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 flex flex-col items-center justify-center transition-opacity text-white">
                                     {updating === 'avatar' ? <Loader2 size={24} className="animate-spin" /> : <Camera size={32} />}
-                                    <span className="text-[8px] font-black uppercase mt-1">Change Avatar</span>
+                                    <span className="text-[8px] font-black uppercase mt-1 tracking-widest text-white">Change Avatar</span>
                                 </div>
                             </button>
                             <input type="file" ref={avatarInputRef} className="hidden" accept="image/*" onChange={handleAvatarChange} />
@@ -283,7 +311,7 @@ const Settings: React.FC = () => {
 
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
+                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1 text-slate-400">Full Name</label>
                             <input
                                 value={fullName}
                                 onChange={(e) => setFullName(e.target.value)}
@@ -292,7 +320,7 @@ const Settings: React.FC = () => {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Nice Name</label>
+                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1 text-slate-400">Nice Name</label>
                             <input
                                 value={niceName}
                                 onChange={(e) => setNiceName(e.target.value)}
@@ -301,7 +329,7 @@ const Settings: React.FC = () => {
                             />
                         </div>
                         <div className="space-y-2 md:col-span-2">
-                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Username</label>
+                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1 text-slate-400">Username</label>
                             <div className="relative">
                                 <AtSign size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input
@@ -337,7 +365,7 @@ const Settings: React.FC = () => {
                 <div className="space-y-4">
                     {permissions.isAdmin && (
                         <div>
-                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Global Gemini Key (Default)</label>
+                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 text-slate-400">Global Gemini Key (Default)</label>
                             <input
                                 type="password"
                                 value={globalApiKey}
@@ -348,7 +376,7 @@ const Settings: React.FC = () => {
                         </div>
                     )}
                     <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Your Personal Gemini Key (Override)</label>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 text-slate-400">Your Personal Gemini Key (Override)</label>
                         <input
                             type="password"
                             value={personalApiKey}
@@ -393,7 +421,7 @@ const Settings: React.FC = () => {
                                     {profile.avatar_url ? (
                                         <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                                     ) : (
-                                        profile.full_name[0]
+                                        profile.full_name?.[0] || '?'
                                     )}
                                     {permissions.isAdmin && (
                                         <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 flex items-center justify-center text-white transition-opacity">
@@ -420,7 +448,7 @@ const Settings: React.FC = () => {
                                     </select>
                                 ) : (
                                     <span className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        {profile.role.slice(0, 2)}
+                                        {profile.role?.slice(0, 2)}
                                     </span>
                                 )}
                             </div>
@@ -439,6 +467,73 @@ const Settings: React.FC = () => {
                     Sign Out From FamilyOS
                 </button>
             </div>
+
+            {/* Crop Modal */}
+            {cropImage && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[3rem] overflow-hidden flex flex-col shadow-2xl border border-white/10">
+                        <header className="px-8 py-6 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center gap-3">
+                                <div className="size-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                                    <Scissors size={20} />
+                                </div>
+                                <h1 className="text-xl font-black">Crop Avatar</h1>
+                            </div>
+                            <button onClick={() => setCropImage(null)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                <X size={24} />
+                            </button>
+                        </header>
+
+                        <div className="relative h-[400px] bg-slate-900">
+                            <Cropper
+                                image={cropImage}
+                                crop={crop}
+                                zoom={zoom}
+                                aspect={1}
+                                shape="round"
+                                onCropChange={setCrop}
+                                onZoomChange={setZoom}
+                                onCropComplete={onCropComplete}
+                            />
+                        </div>
+
+                        <footer className="p-8 space-y-6">
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    <span>Zoom</span>
+                                    <span>{Math.round(zoom * 100)}%</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    value={zoom}
+                                    min={1}
+                                    max={3}
+                                    step={0.1}
+                                    aria-labelledby="Zoom"
+                                    onChange={(e) => setZoom(Number(e.target.value))}
+                                    className="w-full accent-primary"
+                                />
+                            </div>
+
+                            <button
+                                onClick={handleCropSave}
+                                disabled={updating === 'avatar'}
+                                className="w-full bg-primary text-white py-5 rounded-[2rem] font-black text-lg shadow-xl shadow-primary/30 flex items-center justify-center gap-3 active:scale-95 transition-all disabled:opacity-50"
+                            >
+                                {updating === 'avatar' ? (
+                                    <Loader2 size={24} className="animate-spin" />
+                                ) : (
+                                    <>
+                                        <Check size={24} />
+                                        Save Perfect Shot
+                                    </>
+                                )}
+                            </button>
+                            <p className="text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Targeting 128px &bull; Auto-optimized &lt; 20kB</p>
+                        </footer>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

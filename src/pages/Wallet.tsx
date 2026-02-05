@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, ShoppingCart, Bolt, Film, Plus, ScanLine, ChevronDown, Trash2, Loader2, Utensils, Heart, Home, Package, MoreHorizontal } from 'lucide-react';
+import { ArrowLeft, Calendar, ShoppingCart, Bolt, Film, Plus, ScanLine, ChevronDown, Trash2, Loader2, Utensils, Heart, Home, Package, MoreHorizontal, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Transaction, Profile } from '../types';
@@ -22,6 +22,15 @@ const Wallet: React.FC = () => {
     const [profiles, setProfiles] = useState<Record<string, Profile>>({});
     const [loading, setLoading] = useState(true);
     const [totalSpent, setTotalSpent] = useState(0);
+    const [isAddOpen, setIsAddOpen] = useState(false);
+    const [newTrans, setNewTrans] = useState({
+        amount: '',
+        category: 'Groceries',
+        note: '',
+        date: new Date().toISOString().split('T')[0],
+        type: 'expense' as 'income' | 'expense'
+    });
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -80,6 +89,39 @@ const Wallet: React.FC = () => {
         if (!confirm('Are you sure you want to delete this transaction?')) return;
         const { error } = await supabase.from('transactions').delete().eq('id', id);
         if (error) alert(error.message);
+    };
+
+    const handleAdd = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { error } = await supabase.from('transactions').insert({
+                user_id: user.id,
+                amount: parseFloat(newTrans.amount),
+                category: newTrans.category,
+                note: newTrans.note,
+                date: newTrans.date,
+                type: newTrans.type
+            });
+
+            if (error) throw error;
+            setIsAddOpen(false);
+            setNewTrans({
+                amount: '',
+                category: 'Groceries',
+                note: '',
+                date: new Date().toISOString().split('T')[0],
+                type: 'expense'
+            });
+            fetchData();
+        } catch (err: any) {
+            alert(err.message);
+        } finally {
+            setSaving(false);
+        }
     };
 
     const categoriesBreakdown = Object.keys(categoryIcons).map(cat => {
@@ -264,10 +306,91 @@ const Wallet: React.FC = () => {
 
             {/* Floating Action Button */}
             <div className="fixed bottom-28 right-6 z-30 lg:right-12">
-                <button className="size-16 rounded-full bg-primary text-white shadow-xl shadow-primary/40 flex items-center justify-center transition-transform active:scale-90 lg:size-20">
+                <button
+                    onClick={() => setIsAddOpen(true)}
+                    className="size-16 rounded-full bg-primary text-white shadow-xl shadow-primary/40 flex items-center justify-center transition-transform active:scale-90 lg:size-20"
+                >
                     <Plus size={32} />
                 </button>
             </div>
+
+            {/* Add Transaction Modal */}
+            {isAddOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2.5rem] overflow-hidden flex flex-col shadow-2xl">
+                        <header className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <h2 className="text-xl font-black">Add Transaction</h2>
+                            <button onClick={() => setIsAddOpen(false)} className="text-slate-400 hover:text-slate-600">
+                                <XCircle size={24} />
+                            </button>
+                        </header>
+                        <form onSubmit={handleAdd} className="p-8 space-y-6">
+                            <div className="flex gap-2 p-1.5 bg-slate-50 dark:bg-slate-800 rounded-2xl">
+                                {(['expense', 'income'] as const).map(t => (
+                                    <button
+                                        key={t}
+                                        type="button"
+                                        onClick={() => setNewTrans({ ...newTrans, type: t })}
+                                        className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${newTrans.type === t ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400'}`}
+                                    >
+                                        {t}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-primary">$</span>
+                                    <input
+                                        required
+                                        type="number"
+                                        step="0.01"
+                                        placeholder="0.00"
+                                        className="w-full pl-10 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl text-2xl font-black focus:ring-2 focus:ring-primary outline-none"
+                                        value={newTrans.amount}
+                                        onChange={e => setNewTrans({ ...newTrans, amount: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="relative">
+                                        <select
+                                            className="w-full bg-slate-50 dark:bg-slate-800 px-4 py-3 rounded-xl text-sm font-bold appearance-none outline-none focus:ring-2 focus:ring-primary"
+                                            value={newTrans.category}
+                                            onChange={e => setNewTrans({ ...newTrans, category: e.target.value })}
+                                        >
+                                            {Object.keys(categoryIcons).map(cat => <option key={cat}>{cat}</option>)}
+                                        </select>
+                                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    </div>
+                                    <input
+                                        required
+                                        type="date"
+                                        className="w-full bg-slate-50 dark:bg-slate-800 px-4 py-3 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-primary"
+                                        value={newTrans.date}
+                                        onChange={e => setNewTrans({ ...newTrans, date: e.target.value })}
+                                    />
+                                </div>
+
+                                <textarea
+                                    placeholder="Add a note (optional)..."
+                                    className="w-full bg-slate-50 dark:bg-slate-800 px-4 py-4 rounded-2xl text-sm font-medium outline-none focus:ring-2 focus:ring-primary min-h-[100px] resize-none"
+                                    value={newTrans.note}
+                                    onChange={e => setNewTrans({ ...newTrans, note: e.target.value })}
+                                />
+                            </div>
+
+                            <button
+                                disabled={saving}
+                                className="w-full py-4 bg-primary text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-primary/30 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                            >
+                                {saving ? <Loader2 className="animate-spin" /> : <Plus size={20} />}
+                                Save Transaction
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

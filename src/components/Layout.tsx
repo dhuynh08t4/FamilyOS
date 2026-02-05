@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
     LayoutGrid, Wallet, FileText, MessageSquare, Settings,
-    LogOut, User as UserIcon, Bell, Search, Menu, X, ChevronRight, Sparkles, Palette
+    LogOut, User as UserIcon, Bell, Search, Menu, X, ChevronRight, Sparkles, Palette, ScanLine
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types';
@@ -15,25 +15,73 @@ const Layout: React.FC = () => {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isThemeOpen, setIsThemeOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
+    const [allNotes, setAllNotes] = useState<any[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<{ type: string, label: string, to: string, icon: any }[]>([]);
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
 
     const navItems = [
         { to: '/', icon: LayoutGrid, label: 'Dashboard' },
         { to: '/wallet', icon: Wallet, label: 'Wallet' },
+        { to: '/scan', icon: ScanLine, label: 'Smart Scanner' },
         { to: '/notes', icon: FileText, label: 'Notes' },
         { to: '/chat', icon: MessageSquare, label: 'Messenger' },
         { to: '/settings', icon: Settings, label: 'Settings' },
     ];
 
     useEffect(() => {
-        const fetchProfile = async () => {
+        const fetchUser = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
                 const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
                 if (data) setProfile(data);
             }
+
+            // Fetch all profiles and notes for global search
+            // Selecting '*' to ensure we satisfy the Profile[] type
+            const [{ data: profiles }, { data: notes }] = await Promise.all([
+                supabase.from('profiles').select('*'),
+                supabase.from('notes').select('id, title, content')
+            ]);
+            setAllProfiles(profiles || []);
+            setAllNotes(notes || []);
         };
-        fetchProfile();
+        fetchUser();
     }, []);
+
+    useEffect(() => {
+        if (!searchQuery.trim()) {
+            setSearchResults([]);
+            return;
+        }
+
+        const q = searchQuery.toLowerCase();
+        const results: typeof searchResults = [];
+
+        // Search Nav
+        navItems.forEach(item => {
+            if (item.label.toLowerCase().includes(q)) {
+                results.push({ type: 'Navigation', label: item.label, to: item.to, icon: item.icon });
+            }
+        });
+
+        // Search Profiles
+        allProfiles.forEach(p => {
+            if (p.full_name?.toLowerCase().includes(q) || p.nice_name?.toLowerCase().includes(q) || p.username?.toLowerCase().includes(q)) {
+                results.push({ type: 'Family Member', label: p.nice_name || p.full_name || 'Member', to: '/settings', icon: UserIcon });
+            }
+        });
+
+        // Search Notes
+        allNotes.forEach(n => {
+            if (n.title?.toLowerCase().includes(q) || n.content?.toLowerCase().includes(q)) {
+                results.push({ type: 'Note', label: n.title || 'Untitled', to: '/notes', icon: FileText });
+            }
+        });
+
+        setSearchResults(results.slice(0, 8));
+    }, [searchQuery, allProfiles, allNotes]);
 
     const handleSignOut = async () => {
         await supabase.auth.signOut();
@@ -92,12 +140,50 @@ const Layout: React.FC = () => {
                 {/* Desktop Header */}
                 <header className="hidden lg:flex items-center justify-between px-8 py-5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 z-40">
                     <div className="flex items-center gap-4 flex-1">
-                        <div className="relative max-w-md w-full">
+                        <div className="relative max-w-md w-full relative">
                             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold" />
                             <input
                                 className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-2xl py-2.5 pl-11 pr-4 text-sm font-medium outline-none focus:ring-2 focus:ring-primary h-11"
                                 placeholder="Search everything..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onFocus={() => setIsSearchFocused(true)}
+                                onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
                             />
+
+                            {/* Global Search Results Dropdown */}
+                            {isSearchFocused && searchQuery && (
+                                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="p-2">
+                                        {searchResults.length > 0 ? (
+                                            searchResults.map((res, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => { navigate(res.to); setSearchQuery(''); }}
+                                                    className="w-full p-3 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition-colors group text-left"
+                                                >
+                                                    <div className="size-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                                        <res.icon size={20} />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-bold truncate dark:text-white">{res.label}</p>
+                                                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{res.type}</p>
+                                                    </div>
+                                                    <ChevronRight size={16} className="text-slate-300" />
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <div className="p-8 text-center">
+                                                <p className="text-sm text-slate-400 font-medium">No results found for "{searchQuery}"</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Global Intelligent Search</p>
+                                        <Sparkles size={14} className="text-primary" />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 

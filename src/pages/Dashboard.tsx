@@ -1,4 +1,4 @@
-import { Bell, Search, ScanLine, Notebook as Note, MessageSquare, Clock, User, Loader2 } from 'lucide-react';
+import { Bell, Search, ScanLine, Notebook as Note, MessageSquare, Clock, User, Loader2, Pin, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
@@ -8,17 +8,58 @@ const Dashboard: React.FC = () => {
     const navigate = useNavigate();
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({ spent: 0, budget: 2000 });
+    const [recentNotes, setRecentNotes] = useState<any[]>([]);
+    const [activities, setActivities] = useState<any[]>([]);
 
     useEffect(() => {
-        const fetchProfile = async () => {
+        const fetchData = async () => {
             const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-                setProfile(data);
-            }
+            if (!user) return;
+
+            // 1. Profile
+            const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+            setProfile(prof);
+
+            // 2. Spending
+            const startOfMonth = new Date();
+            startOfMonth.setDate(1);
+            startOfMonth.setHours(0, 0, 0, 0);
+
+            const { data: trans } = await supabase
+                .from('transactions')
+                .select('amount')
+                .eq('type', 'expense')
+                .gte('date', startOfMonth.toISOString().split('T')[0]);
+
+            const total = trans?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+            setStats(prev => ({ ...prev, spent: total }));
+
+            // 3. Notes
+            const { data: notes } = await supabase
+                .from('notes')
+                .select('*')
+                .order('is_pinned', { ascending: false })
+                .order('created_at', { ascending: false })
+                .limit(4);
+            setRecentNotes(notes || []);
+
+            // 4. Activities (Messages + Transactions)
+            const [msgs, recentTrans] = await Promise.all([
+                supabase.from('messages').select('*, profiles(full_name, nice_name)').order('created_at', { ascending: false }).limit(3),
+                supabase.from('transactions').select('*, profiles(full_name, nice_name)').order('created_at', { ascending: false }).limit(3)
+            ]);
+
+            const combined = [
+                ...(msgs.data || []).map(m => ({ ...m, activityType: 'message' })),
+                ...(recentTrans.data || []).map(t => ({ ...t, activityType: 'transaction' }))
+            ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5);
+
+            setActivities(combined);
+
             setLoading(false);
         };
-        fetchProfile();
+        fetchData();
     }, []);
 
     if (loading) {
@@ -96,26 +137,29 @@ const Dashboard: React.FC = () => {
             </section>
 
             {/* Spending Progress Card */}
-            <section className="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700">
+            <section className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
                 <div className="flex justify-between items-start mb-4">
                     <div>
                         <h3 className="text-lg font-bold">Monthly Spending</h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">September 2023</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">{new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}</p>
                     </div>
                     <div className="text-right">
-                        <p className="text-xl font-bold text-primary">$1,625</p>
-                        <p className="text-xs text-slate-400">of $2,500 limit</p>
+                        <p className="text-xl font-bold text-primary">${stats.spent.toLocaleString()}</p>
+                        <p className="text-xs text-slate-400">of ${stats.budget.toLocaleString()} limit</p>
                     </div>
                 </div>
                 <div className="space-y-3">
                     <div className="w-full bg-slate-100 dark:bg-slate-700 h-3 rounded-full overflow-hidden">
-                        <div className="bg-primary h-full rounded-full transition-all duration-1000" style={{ width: '65%' }}></div>
+                        <div
+                            className="bg-primary h-full rounded-full transition-all duration-1000"
+                            style={{ width: `${Math.min((stats.spent / stats.budget) * 100, 100)}%` }}
+                        ></div>
                     </div>
                     <div className="flex justify-between items-center text-sm">
                         <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300 font-medium">
-                            <Clock size={14} /> 12 days left
+                            <Clock size={14} /> {30 - new Date().getDate()} days left
                         </span>
-                        <span className="text-slate-600 dark:text-slate-300 font-bold">$875 remaining</span>
+                        <span className="text-slate-600 dark:text-slate-300 font-bold">${Math.max(stats.budget - stats.spent, 0).toLocaleString()} remaining</span>
                     </div>
                 </div>
             </section>
@@ -124,39 +168,60 @@ const Dashboard: React.FC = () => {
             <section>
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-lg font-bold">Recent Notes</h2>
-                    <button className="text-primary text-sm font-bold active:opacity-70">View All</button>
+                    <button onClick={() => navigate('/notes')} className="text-primary text-sm font-bold active:opacity-70">View All</button>
                 </div>
                 <div className="columns-2 gap-3 space-y-3">
-                    {/* Note 1 */}
-                    <div className="break-inside-avoid bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-                        <h4 className="font-bold text-sm mb-2">🛒 Grocery List</h4>
-                        <ul className="text-xs space-y-2 text-slate-600 dark:text-slate-400">
-                            <li className="flex items-center gap-2"><div className="size-3 border rounded-sm border-slate-300 dark:border-slate-600" /> Almond milk</li>
-                            <li className="flex items-center gap-2"><div className="size-3 border rounded-sm border-slate-300 dark:border-slate-600" /> Avocados (3)</li>
-                            <li className="flex items-center gap-2"><div className="size-3 bg-primary rounded-sm flex items-center justify-center text-[8px] text-white">✓</div> Chicken breast</li>
-                        </ul>
-                    </div>
-                    {/* Note 2 */}
-                    <div className="break-inside-avoid bg-primary/10 dark:bg-primary/20 p-4 rounded-xl border border-primary/20">
-                        <h4 className="font-bold text-sm mb-2">⚽ Soccer Practice</h4>
-                        <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                            Tuesdays & Thursdays at 5:00 PM. Don't forget water bottles and cleats!
-                        </p>
-                    </div>
-                    {/* Note 3 */}
-                    <div className="break-inside-avoid bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+                    {recentNotes.map((note) => (
                         <div
-                            className="w-full h-24 bg-cover bg-center rounded-lg mb-2"
-                            style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuDgTDvJIj8HV7LFMuoLlP99u8Iomghv-HaxOvDFDGrmxjqxtNa8l_ONJU_gYXjIaEmNN1gkc-O5bjv03wFu90cM2WvjOEQawpJAc4bHLx-zb9TmnQ4Sx02gRM71K-NeDbQhQ8IfId-CqsH8iDtL5nRq3IcFbH3BVbRN226qO2dmHd2i3hxF_fecEvtEPI8hQmbPLUidyqRy20uSOdCzzNQ0lwXuTzCWO8mZtzSUZ22TBHswyFMBkIIe2HlUAlssIKv1latIwbdn-Ibk")' }}
-                        />
-                        <h4 className="font-bold text-sm mb-1">🏔️ Weekend Trip</h4>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Looking at cabins in Lake Tahoe for the break.</p>
-                    </div>
-                    {/* Note 4 */}
-                    <div className="break-inside-avoid bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-                        <h4 className="font-bold text-sm mb-2">💡 Wi-Fi Password</h4>
-                        <p className="text-xs font-mono bg-slate-50 dark:bg-slate-900 p-2 rounded text-slate-600 dark:text-slate-300">family-cloud-2023</p>
-                    </div>
+                            key={note.id}
+                            onClick={() => navigate('/notes')}
+                            className="break-inside-avoid bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-md transition-all cursor-pointer"
+                        >
+                            <div className="flex justify-between items-start mb-2">
+                                <h4 className="font-bold text-sm line-clamp-1">{note.title || 'Untitled'}</h4>
+                                {note.is_pinned && <Pin size={12} className="text-primary fill-primary" />}
+                            </div>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-3 leading-relaxed">
+                                {note.content || 'No content...'}
+                            </p>
+                        </div>
+                    ))}
+                    {recentNotes.length === 0 && (
+                        <div className="col-span-2 py-8 text-center bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                            <p className="text-xs text-slate-400 font-medium">No notes yet. Create one!</p>
+                        </div>
+                    )}
+                </div>
+            </section>
+
+            {/* Global Activity Feed */}
+            <section className="space-y-4">
+                <h2 className="text-lg font-bold">Family Activity</h2>
+                <div className="bg-white dark:bg-slate-800 rounded-3xl overflow-hidden border border-slate-100 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700">
+                    {activities.map((act) => (
+                        <div key={`${act.activityType}-${act.id}`} className="p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                            <div className={`size-10 rounded-2xl flex items-center justify-center shrink-0 ${act.activityType === 'message' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
+                                {act.activityType === 'message' ? <MessageSquare size={20} /> : <Wallet size={20} />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold truncate">
+                                    <span className="text-primary">{act.profiles?.nice_name || act.profiles?.full_name}</span>
+                                    {act.activityType === 'message' ? ' sent a message' : ` spent $${act.amount}`}
+                                </p>
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 italic truncate">
+                                    {act.activityType === 'message' ? act.content : act.note || act.category}
+                                </p>
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase whitespace-nowrap">
+                                {new Date(act.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                        </div>
+                    ))}
+                    {activities.length === 0 && (
+                        <div className="p-8 text-center">
+                            <p className="text-xs text-slate-400">No activity today yet.</p>
+                        </div>
+                    )}
                 </div>
             </section>
         </div>

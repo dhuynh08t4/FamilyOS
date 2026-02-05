@@ -6,7 +6,8 @@ import { usePermission } from '../hooks/usePermission';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '../lib/cropUtils';
 import { useTheme, themeColors, type ThemeColor, type ThemeMode } from '../hooks/useTheme';
-import { Palette, Sun, Moon, Monitor } from 'lucide-react';
+import { Palette } from 'lucide-react';
+import { ThemeSelector } from '../components/ThemeSelector';
 
 const Settings: React.FC = () => {
     const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -19,9 +20,7 @@ const Settings: React.FC = () => {
     const [personalApiKey, setPersonalApiKey] = useState('');
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-    // Theme State
-    const [themeColor, setThemeColor] = useState<ThemeColor>('indigo');
-    const [themeMode, setThemeMode] = useState<ThemeMode>('auto');
+    // Theme State (For Global Admin only, Personal is handled by ThemeSelector)
     const [globalThemeColor, setGlobalThemeColor] = useState<ThemeColor>('indigo');
     const [globalThemeMode, setGlobalThemeMode] = useState<ThemeMode>('auto');
 
@@ -94,20 +93,13 @@ const Settings: React.FC = () => {
             if (globalKey) setGlobalApiKey(globalKey.value || '');
             if (personalKey) setPersonalApiKey(personalKey.value || '');
 
-            // Fetch Themes
-            const { data: globalTheme } = await supabase.from('app_settings').select('value').eq('key', 'DEFAULT_THEME').single();
-            if (globalTheme?.value) {
-                const parsed = typeof globalTheme.value === 'string' ? JSON.parse(globalTheme.value) : globalTheme.value;
-                setGlobalThemeColor(parsed.color || 'indigo');
-                setGlobalThemeMode(parsed.mode || 'auto');
-            }
-
             if (user) {
-                const { data: userTheme } = await supabase.from('user_settings').select('value').eq('user_id', user.id).eq('key', 'THEME_PREFERENCE').single();
-                if (userTheme?.value) {
-                    const parsed = typeof userTheme.value === 'string' ? JSON.parse(userTheme.value) : userTheme.value;
-                    setThemeColor(parsed.color || 'indigo');
-                    setThemeMode(parsed.mode || 'auto');
+                // Fetch Global Default
+                const { data: globalTheme } = await supabase.from('app_settings').select('value').eq('key', 'DEFAULT_THEME').single();
+                if (globalTheme?.value) {
+                    const parsed = typeof globalTheme.value === 'string' ? JSON.parse(globalTheme.value) : globalTheme.value;
+                    setGlobalThemeColor(parsed.color || 'indigo');
+                    setGlobalThemeMode(parsed.mode || 'auto');
                 }
             }
 
@@ -260,23 +252,6 @@ const Settings: React.FC = () => {
     const handleSignOut = async () => {
         await supabase.auth.signOut();
         window.location.href = '/login';
-    };
-
-    const saveThemePreference = async (color: ThemeColor, mode: ThemeMode) => {
-        setThemeColor(color);
-        setThemeMode(mode);
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-            await supabase.from('user_settings').upsert({
-                user_id: user.id,
-                key: 'THEME_PREFERENCE',
-                value: { color, mode }
-            }, { onConflict: 'user_id,key' });
-            refreshTheme();
-        } catch (err) {
-            console.error('Save theme error:', err);
-        }
     };
 
     const saveGlobalTheme = async () => {
@@ -544,48 +519,8 @@ const Settings: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="space-y-6">
-                    {/* Mode Selector */}
-                    <div className="space-y-3">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Display Mode</label>
-                        <div className="flex gap-2 p-1.5 bg-slate-50 dark:bg-slate-800 rounded-2xl w-fit">
-                            {[
-                                { id: 'light', icon: Sun, label: 'Light' },
-                                { id: 'dark', icon: Moon, label: 'Dark' },
-                                { id: 'auto', icon: Monitor, label: 'Auto' }
-                            ].map((mode) => (
-                                <button
-                                    key={mode.id}
-                                    onClick={() => saveThemePreference(themeColor, mode.id as ThemeMode)}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${themeMode === mode.id ? 'bg-white dark:bg-slate-700 shadow-sm text-primary' : 'text-slate-400 hover:text-slate-600'}`}
-                                >
-                                    <mode.icon size={16} />
-                                    {mode.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Color Palettes */}
-                    <div className="space-y-3">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Accent Color</label>
-                        <div className="grid grid-cols-5 sm:grid-cols-10 gap-3">
-                            {(Object.keys(themeColors) as ThemeColor[]).map((color) => (
-                                <button
-                                    key={color}
-                                    onClick={() => saveThemePreference(color, themeMode)}
-                                    className={`group relative size-10 rounded-xl transition-all hover:scale-110 active:scale-90 flex items-center justify-center ${themeColor === color ? 'ring-2 ring-offset-2 ring-primary dark:ring-offset-slate-900' : ''}`}
-                                    style={{ backgroundColor: themeColors[color] }}
-                                    title={color}
-                                >
-                                    {themeColor === color && <Check size={18} className="text-white" />}
-                                    <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
-                                        {color}
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
+                <div className="max-w-md">
+                    <ThemeSelector userId={myProfile?.id} />
                 </div>
 
                 {/* Admin Global Theme */}

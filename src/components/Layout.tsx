@@ -2,16 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
     LayoutGrid, Wallet, FileText, MessageSquare, Settings,
-    LogOut, User as UserIcon, Bell, Search, Menu, X, ChevronRight, Sparkles
+    LogOut, User as UserIcon, Bell, Search, Menu, X, ChevronRight, Sparkles, Palette
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types';
+import { ThemeSelector } from './ThemeSelector';
 
 const Layout: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [profile, setProfile] = useState<Profile | null>(null);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isThemeOpen, setIsThemeOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const navItems = [
@@ -107,6 +109,23 @@ const Layout: React.FC = () => {
 
                         <div className="relative">
                             <button
+                                onClick={() => setIsThemeOpen(!isThemeOpen)}
+                                className={`size-11 flex items-center justify-center rounded-2xl border transition-all ${isThemeOpen ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-500 shadow-sm hover:bg-slate-50'}`}
+                            >
+                                <Palette size={20} />
+                            </button>
+                            {isThemeOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setIsThemeOpen(false)}></div>
+                                    <div className="absolute right-0 mt-3 z-50 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+                                        <ThemeSelector userId={profile?.id} onClose={() => setIsThemeOpen(false)} />
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        <div className="relative">
+                            <button
                                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                                 className="flex items-center gap-3 p-1.5 pr-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
                             >
@@ -171,12 +190,30 @@ const Layout: React.FC = () => {
                         </div>
                         <span className="text-lg font-black tracking-tight dark:text-white">FamilyOS</span>
                     </div>
-                    <button
-                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                        className="size-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600"
-                    >
-                        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setIsThemeOpen(!isThemeOpen)}
+                            className={`size-10 flex items-center justify-center rounded-xl transition-all ${isThemeOpen ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600'}`}
+                        >
+                            <Palette size={20} />
+                        </button>
+                        <button
+                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                            className="size-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600"
+                        >
+                            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                        </button>
+                    </div>
+
+                    {/* Mobile Theme Selector Overlay */}
+                    {isThemeOpen && (
+                        <>
+                            <div className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm" onClick={() => setIsThemeOpen(false)}></div>
+                            <div className="fixed top-20 right-6 z-[70] animate-in slide-in-from-top-4 duration-300">
+                                <ThemeSelector userId={profile?.id} onClose={() => setIsThemeOpen(false)} />
+                            </div>
+                        </>
+                    )}
                 </header>
 
                 {/* Content with Custom Scrollbar */}

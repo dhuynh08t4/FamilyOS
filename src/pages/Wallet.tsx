@@ -85,10 +85,27 @@ const Wallet: React.FC = () => {
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (id: string | number) => {
         if (!confirm('Are you sure you want to delete this transaction?')) return;
+
+        // Optimistic UI update
+        const originalTransactions = [...transactions];
+        setTransactions(prev => prev.filter(t => t.id !== id));
+
+        // Update local total spent
+        const deletedTrans = transactions.find(t => t.id === id);
+        if (deletedTrans && deletedTrans.type === 'expense') {
+            setTotalSpent(prev => prev - deletedTrans.amount);
+        }
+
         const { error } = await supabase.from('transactions').delete().eq('id', id);
-        if (error) alert(error.message);
+
+        if (error) {
+            alert('Error deleting transaction: ' + error.message);
+            // Revert if failed
+            setTransactions(originalTransactions);
+            fetchData();
+        }
     };
 
     const handleAdd = async (e: React.FormEvent) => {

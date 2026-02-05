@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Smart Scanner - FamilyOS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#5449e9",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#121121",
+                    },
+                    fontFamily: {
+                        "display": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .ios-blur {
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#0f0e1b] dark:text-white transition-colors duration-200">
+<!-- Top Navigation Bar -->
+<header class="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 ios-blur px-4 py-3 flex items-center justify-between border-b border-gray-200 dark:border-gray-800">
+<button class="flex items-center justify-center p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
+<span class="material-symbols-outlined">arrow_back_ios</span>
+</button>
+<h1 class="text-lg font-bold tracking-tight">AI Smart Scanner</h1>
+<button class="text-primary font-semibold text-sm">Help</button>
+</header>
+<main class="max-w-md mx-auto pb-32">
+<!-- Image Preview Container -->
+<div class="px-4 py-6">
+<div class="relative group">
+<div class="w-full aspect-[3/4] rounded-xl overflow-hidden shadow-xl border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
+<img alt="Captured document preview" class="w-full h-full object-cover" data-alt="A close up photo of a grocery store receipt on a wooden table" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYSq_hHkF7w4ocN2tj5_5T_mO52BpoHBW4cBRAluvtXgqYlxGzto4QJBcumybwR1cfFfogH7uaqFCXPiaOhztKmEKpVj7IdZrhs9kGhL4PrJQKUid9natPvdY8gBe-KlwvGa9Ic1FH1B7_H2nEmXAk-gbRldelCS0rRizCOEb3ZTpf-ZawDxPBhzREcFT3iib88DUfTflxUUisSvGYZYw_mEua7eRo_Q9dUnVPZUnTHY4ENNIm0XQRw_V7tgsDoCY4CTKS6Epz8Kwc"/>
+<!-- Processing Overlay -->
+<div class="absolute inset-0 bg-background-dark/40 ios-blur flex flex-col items-center justify-center p-8">
+<div class="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4"></div>
+<div class="bg-white/10 p-4 rounded-xl backdrop-blur-md border border-white/20 w-full">
+<div class="flex justify-between items-center mb-2">
+<span class="text-white text-sm font-medium">Processing with Gemini AI</span>
+<span class="text-white text-xs font-bold bg-primary px-2 py-0.5 rounded-full">65%</span>
+</div>
+<div class="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 65%;"></div>
+</div>
+<p class="text-white/80 text-[10px] mt-2 uppercase tracking-widest text-center">Identifying line items...</p>
+</div>
+</div>
+</div>
+<button class="absolute bottom-4 right-4 bg-white/90 dark:bg-gray-800/90 p-2 rounded-full shadow-lg border border-gray-200 dark:border-gray-700">
+<span class="material-symbols-outlined text-primary">zoom_in</span>
+</button>
+</div>
+</div>
+<!-- Extracted Details Form -->
+<section class="px-4 space-y-6">
+<div class="flex items-center justify-between">
+<h2 class="text-xl font-bold">Review Details</h2>
+<span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">JSON Verified</span>
+</div>
+<div class="space-y-4">
+<!-- Amount Field -->
+<div>
+<label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 mb-1.5 ml-1">Total Amount</label>
+<div class="relative">
+<span class="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-primary">$</span>
+<input class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl py-4 pl-10 pr-12 text-2xl font-bold focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="text" value="142.50"/>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-green-500">check_circle</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<!-- Date Field -->
+<div>
+<label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 mb-1.5 ml-1">Date</label>
+<div class="relative">
+<input class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl py-3 px-4 text-sm font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none" type="text" value="Oct 24, 2023"/>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">calendar_today</span>
+</div>
+</div>
+<!-- Category Selection -->
+<div>
+<label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 mb-1.5 ml-1">Category</label>
+<div class="relative">
+<select class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl py-3 px-4 text-sm font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none appearance-none">
+<option selected="">Groceries</option>
+<option>Dining Out</option>
+<option>Kids</option>
+<option>Household</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg pointer-events-none">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Notes / Description -->
+<div>
+<label class="block text-sm font-semibold text-gray-500 dark:text-gray-400 mb-1.5 ml-1">Notes</label>
+<textarea class="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl py-3 px-4 text-sm font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none min-h-[80px] resize-none" placeholder="Add a description...">Weekly family shop at Trader Joe's. Includes school lunch supplies.</textarea>
+</div>
+<!-- Quick Category Pills -->
+<div class="flex flex-wrap gap-2 pt-2">
+<button class="px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20">Essential</button>
+<button class="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 text-xs font-bold border border-transparent">Split with Sarah</button>
+<button class="px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 text-xs font-bold border border-transparent">Tax Deductible</button>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Actions Container -->
+<footer class="fixed bottom-0 left-0 right-0 bg-background-light dark:bg-background-dark border-t border-gray-200 dark:border-gray-800 p-4 pb-8 safe-area-bottom z-50">
+<div class="max-w-md mx-auto grid grid-cols-2 gap-4">
+<button class="flex items-center justify-center gap-2 py-4 rounded-xl border border-gray-200 dark:border-gray-700 font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+<span class="material-symbols-outlined text-lg">refresh</span>
+                Rescan
+            </button>
+<button class="flex items-center justify-center gap-2 py-4 rounded-xl bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:opacity-90 transition-all active:scale-95">
+<span class="material-symbols-outlined text-lg">check</span>
+                Save to Family
+            </button>
+</div>
+</footer>
+<!-- Tab Bar (iOS style) -->
+<nav class="hidden">
+<!-- Kept hidden to focus on the scanner interface, but maintains platform consistency -->
+</nav>
+</body></html>

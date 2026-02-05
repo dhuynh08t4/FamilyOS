@@ -6,7 +6,7 @@ import { usePermission } from '../hooks/usePermission';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '../lib/cropUtils';
 import { useTheme, themeColors, type ThemeColor, type ThemeMode } from '../hooks/useTheme';
-import { Palette } from 'lucide-react';
+import { Palette, Sun, Moon, Monitor } from 'lucide-react';
 import { ThemeSelector } from '../components/ThemeSelector';
 
 const Settings: React.FC = () => {
@@ -538,27 +538,34 @@ const Settings: React.FC = () => {
                                 Set as Default
                             </button>
                         </div>
-                        <div className="flex flex-wrap gap-6 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800">
-                            <div className="space-y-3">
-                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Default Mode</label>
-                                <select
-                                    value={globalThemeMode}
-                                    onChange={(e) => setGlobalThemeMode(e.target.value as ThemeMode)}
-                                    className="bg-white dark:bg-slate-700 border-none rounded-xl px-3 py-2 text-xs font-bold outline-none ring-1 ring-slate-200 dark:ring-slate-600 focus:ring-primary h-10 min-w-32"
-                                >
-                                    <option value="light">Light</option>
-                                    <option value="dark">Dark</option>
-                                    <option value="auto">Auto (System)</option>
-                                </select>
+                        <div className="space-y-8 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800">
+                            <div className="space-y-4">
+                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider ml-1">Default Mode</p>
+                                <div className="flex gap-2 p-1.5 bg-white dark:bg-slate-800 rounded-2xl w-fit shadow-sm border border-slate-100 dark:border-slate-700">
+                                    {[
+                                        { id: 'auto', icon: Monitor, label: 'Auto' },
+                                        { id: 'light', icon: Sun, label: 'Light' },
+                                        { id: 'dark', icon: Moon, label: 'Dark' }
+                                    ].map((m) => (
+                                        <button
+                                            key={m.id}
+                                            onClick={() => setGlobalThemeMode(m.id as ThemeMode)}
+                                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${globalThemeMode === m.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400 hover:text-slate-600'}`}
+                                        >
+                                            <m.icon size={16} />
+                                            {m.label}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                            <div className="space-y-3">
-                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Default Color</label>
-                                <div className="flex flex-wrap gap-2">
+                            <div className="space-y-4">
+                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider ml-1">Default Color</p>
+                                <div className="flex flex-wrap gap-4">
                                     {(Object.keys(themeColors) as ThemeColor[]).map((color) => (
                                         <button
                                             key={`global-${color}`}
                                             onClick={() => setGlobalThemeColor(color)}
-                                            className={`size-8 rounded-lg transition-all ${globalThemeColor === color ? 'ring-2 ring-offset-2 ring-primary dark:ring-offset-slate-900 scale-110 shadow-lg' : 'opacity-60 hover:opacity-100'}`}
+                                            className={`size-10 rounded-2xl transition-all hover:scale-110 active:scale-95 ${globalThemeColor === color ? 'ring-2 ring-primary ring-offset-4 dark:ring-offset-slate-900 shadow-lg' : 'opacity-60 hover:opacity-100'}`}
                                             style={{ backgroundColor: themeColors[color] }}
                                         />
                                     ))}

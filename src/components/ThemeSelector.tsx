@@ -58,12 +58,12 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({ userId, onClose, v
         return (
             <div className="space-y-8">
                 <div className="space-y-4">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Display Mode</label>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Display Mode</p>
                     <div className="flex gap-2 p-1.5 bg-slate-50 dark:bg-slate-800 rounded-2xl w-fit">
                         {[
+                            { id: 'auto', icon: Monitor, label: 'Auto' },
                             { id: 'light', icon: Sun, label: 'Light' },
                             { id: 'dark', icon: Moon, label: 'Dark' },
-                            { id: 'auto', icon: Monitor, label: 'Auto' }
                         ].map((m) => (
                             <button
                                 key={m.id}
@@ -78,7 +78,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({ userId, onClose, v
                 </div>
 
                 <div className="space-y-4">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Accent Color</label>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Accent Color</p>
                     <div className="flex flex-wrap gap-4">
                         {(Object.keys(themeColors) as ThemeColor[]).map((color) => (
                             <button

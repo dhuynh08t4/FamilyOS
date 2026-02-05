@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sun, Moon, Monitor, Palette, Check } from 'lucide-react';
+import { Sun, Moon, Monitor, Palette, Check, Globe } from 'lucide-react';
 import { themeColors, type ThemeColor, type ThemeMode, useTheme } from '../hooks/useTheme';
 import { supabase } from '../lib/supabase';
 
@@ -12,34 +12,47 @@ interface ThemeSelectorProps {
 export const ThemeSelector: React.FC<ThemeSelectorProps> = ({ userId, onClose, variant = 'popup' }) => {
     const [themeColor, setThemeColor] = useState<ThemeColor>('indigo');
     const [themeMode, setThemeMode] = useState<ThemeMode>('auto');
+    const [isFollowingGlobal, setIsFollowingGlobal] = useState(false);
     const { refreshTheme } = useTheme(userId);
 
-    useEffect(() => {
-        const fetchTheme = async () => {
-            if (!userId) {
-                // Fetch Global Default if no user
-                const { data } = await supabase.from('app_settings').select('value').eq('key', 'DEFAULT_THEME').single();
-                if (data?.value) {
-                    const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
-                    setThemeColor(parsed.color || 'indigo');
-                    setThemeMode(parsed.mode || 'auto');
-                }
-                return;
-            }
-
-            const { data } = await supabase.from('user_settings').select('value').eq('user_id', userId).eq('key', 'THEME_PREFERENCE').single();
+    const fetchTheme = async () => {
+        if (!userId) {
+            // Fetch Global Default if no user
+            const { data } = await supabase.from('app_settings').select('value').eq('key', 'DEFAULT_THEME').single();
             if (data?.value) {
                 const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
                 setThemeColor(parsed.color || 'indigo');
                 setThemeMode(parsed.mode || 'auto');
             }
-        };
+            return;
+        }
+
+        const { data } = await supabase.from('user_settings').select('value').eq('user_id', userId).eq('key', 'THEME_PREFERENCE').single();
+        if (data?.value) {
+            const parsed = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+            setThemeColor(parsed.color || 'indigo');
+            setThemeMode(parsed.mode || 'auto');
+            setIsFollowingGlobal(false);
+        } else {
+            // No personal preference, fetch global to show values
+            const { data: globalData } = await supabase.from('app_settings').select('value').eq('key', 'DEFAULT_THEME').single();
+            if (globalData?.value) {
+                const parsed = typeof globalData.value === 'string' ? JSON.parse(globalData.value) : globalData.value;
+                setThemeColor(parsed.color || 'indigo');
+                setThemeMode(parsed.mode || 'auto');
+            }
+            setIsFollowingGlobal(true);
+        }
+    };
+
+    useEffect(() => {
         fetchTheme();
     }, [userId]);
 
     const saveTheme = async (color: ThemeColor, mode: ThemeMode) => {
         setThemeColor(color);
         setThemeMode(mode);
+        setIsFollowingGlobal(false);
         if (!userId) return;
 
         try {
@@ -54,9 +67,31 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({ userId, onClose, v
         }
     };
 
+    const setGlobal = async () => {
+        if (!userId) return;
+        try {
+            await supabase.from('user_settings').delete().eq('user_id', userId).eq('key', 'THEME_PREFERENCE');
+            await fetchTheme();
+            refreshTheme();
+        } catch (err) {
+            console.error('Set global error:', err);
+        }
+    };
+
     if (variant === 'inline') {
         return (
             <div className="space-y-8">
+                <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Configuration</p>
+                    <button
+                        onClick={setGlobal}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${isFollowingGlobal ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200'}`}
+                    >
+                        <Globe size={14} />
+                        {isFollowingGlobal ? 'Following Family' : 'Use Family Default'}
+                    </button>
+                </div>
+
                 <div className="space-y-4">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Display Mode</p>
                     <div className="flex gap-2 p-1.5 bg-slate-50 dark:bg-slate-800 rounded-2xl w-fit">
@@ -102,9 +137,20 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({ userId, onClose, v
 
     return (
         <div className="p-6 space-y-6 bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-800 w-72">
-            <div className="flex items-center gap-2 mb-2">
-                <Palette size={18} className="text-primary" />
-                <h3 className="text-sm font-black uppercase tracking-widest">Appearance</h3>
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                    <Palette size={18} className="text-primary" />
+                    <h3 className="text-sm font-black uppercase tracking-widest">Appearance</h3>
+                </div>
+                {userId && (
+                    <button
+                        onClick={setGlobal}
+                        title="Follow family theme"
+                        className={`size-8 rounded-lg flex items-center justify-center transition-all ${isFollowingGlobal ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}
+                    >
+                        <Globe size={16} />
+                    </button>
+                )}
             </div>
 
             <div className="space-y-4">

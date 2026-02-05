@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { User, Shield, Key, Users, ChevronRight, LogOut, Save, Loader2, CheckCircle2, AtSign, UserCircle, XCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { User, Shield, Key, Users, ChevronRight, LogOut, Save, Loader2, CheckCircle2, AtSign, UserCircle, XCircle, Camera, Upload } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Profile, UserRole } from '../types';
 import { usePermission } from '../hooks/usePermission';
+import imageCompression from 'browser-image-compression';
 
 const Settings: React.FC = () => {
+    const avatarInputRef = useRef<HTMLInputElement>(null);
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [myProfile, setMyProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
@@ -58,6 +60,60 @@ const Settings: React.FC = () => {
             console.error('Error fetching settings:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleAvatarClick = () => {
+        avatarInputRef.current?.click();
+    };
+
+    const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !myProfile) return;
+
+        setUpdating('avatar');
+        try {
+            // Resize to max 256x256
+            const options = {
+                maxSizeMB: 0.2,
+                maxWidthOrHeight: 256,
+                useWebWorker: true
+            };
+            const compressedFile = await imageCompression(file, options);
+
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${myProfile.id}-${Math.random()}.${fileExt}`;
+            const filePath = `avatars/${fileName}`;
+
+            // Upload to 'avatar' bucket
+            const { error: uploadError } = await supabase.storage
+                .from('avatar')
+                .upload(filePath, compressedFile);
+
+            if (uploadError) throw uploadError;
+
+            // Get Public URL
+            const { data: { publicUrl } } = supabase.storage.from('avatar').getPublicUrl(filePath);
+
+            // Update profile
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update({ avatar_url: publicUrl })
+                .eq('id', myProfile.id);
+
+            if (updateError) throw updateError;
+
+            setMyProfile({ ...myProfile, avatar_url: publicUrl });
+            setProfiles(profiles.map(p => p.id === myProfile.id ? { ...p, avatar_url: publicUrl } : p));
+            setMessage({ type: 'success', text: 'Avatar updated successfully!' });
+            setTimeout(() => setMessage(null), 3000);
+
+        } catch (error: any) {
+            console.error('Avatar upload error:', error);
+            setMessage({ type: 'error', text: error.message || 'Failed to upload avatar' });
+        } finally {
+            setUpdating(null);
+            if (avatarInputRef.current) avatarInputRef.current.value = '';
         }
     };
 
@@ -136,16 +192,39 @@ const Settings: React.FC = () => {
 
     return (
         <div className="px-4 py-6 max-w-4xl mx-auto space-y-8 pb-32">
-            <header className="flex items-center gap-4 bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
-                <div className="size-20 rounded-full bg-primary/10 flex items-center justify-center text-primary relative">
-                    <User size={40} />
-                    <div className="absolute -bottom-1 -right-1 bg-green-500 size-5 border-4 border-white dark:border-slate-900 rounded-full"></div>
+            <header className="flex items-center gap-6 bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
+                {/* Decorative background overlay */}
+                <div className="absolute top-0 right-0 size-64 bg-primary/5 rounded-full -mr-20 -mt-20 blur-3xl transition-colors group-hover:bg-primary/10"></div>
+
+                <div className="relative">
+                    <button
+                        onClick={handleAvatarClick}
+                        disabled={updating === 'avatar'}
+                        className="size-24 rounded-3xl bg-primary/10 flex items-center justify-center text-primary relative shadow-inner overflow-hidden group/avatar active:scale-95 transition-all"
+                    >
+                        {myProfile?.avatar_url ? (
+                            <img src={myProfile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                            <User size={48} />
+                        )}
+
+                        {/* Hover Overlay */}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition-opacity text-white">
+                            {updating === 'avatar' ? <Loader2 size={24} className="animate-spin" /> : <Camera size={24} />}
+                        </div>
+                    </button>
+                    <input type="file" ref={avatarInputRef} className="hidden" accept="image/*" onChange={handleAvatarChange} />
+                    <div className="absolute -bottom-1 -right-1 bg-green-500 size-6 border-4 border-white dark:border-slate-900 rounded-full shadow-sm"></div>
                 </div>
-                <div className="flex-1 min-w-0">
-                    <h1 className="text-2xl font-black truncate leading-tight">{myProfile?.full_name}</h1>
-                    <div className="flex items-center gap-2 mt-1">
-                        <span className="px-2 py-0.5 rounded-md bg-primary text-white text-[10px] font-black uppercase tracking-widest">{myProfile?.role}</span>
-                        <span className="text-slate-400 text-xs font-medium">@{myProfile?.username || 'no-username'}</span>
+
+                <div className="flex-1 min-w-0 relative">
+                    <h1 className="text-3xl font-black truncate leading-tight dark:text-white">{myProfile?.full_name}</h1>
+                    <div className="flex items-center gap-3 mt-2">
+                        <span className="px-3 py-1 rounded-xl bg-primary text-white text-[11px] font-black uppercase tracking-widest shadow-lg shadow-primary/20">{myProfile?.role}</span>
+                        <span className="text-slate-400 text-sm font-bold flex items-center gap-1">
+                            <AtSign size={14} />
+                            {myProfile?.username || 'no-username'}
+                        </span>
                     </div>
                 </div>
             </header>
@@ -268,11 +347,15 @@ const Settings: React.FC = () => {
                     {profiles.map((profile) => (
                         <div key={profile.id} className="bg-white dark:bg-slate-900 p-5 rounded-[2rem] flex items-center justify-between border border-slate-100 dark:border-slate-800 shadow-sm transition-transform hover:scale-[1.02]">
                             <div className="flex items-center gap-4">
-                                <div className="size-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-slate-600">
-                                    {profile.full_name[0]}
+                                <div className="size-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-slate-600 overflow-hidden">
+                                    {profile.avatar_url ? (
+                                        <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                                    ) : (
+                                        profile.full_name[0]
+                                    )}
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="font-black text-sm truncate">{profile.full_name}</p>
+                                    <p className="font-black text-sm truncate dark:text-white">{profile.full_name}</p>
                                     <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">@{profile.username || 'n/a'}</p>
                                 </div>
                             </div>

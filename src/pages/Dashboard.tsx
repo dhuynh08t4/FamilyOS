@@ -1,21 +1,54 @@
-import React from 'react';
-import { Bell, Search, ScanLine, Notebook as Note, MessageSquare, Clock } from 'lucide-react';
+import { Bell, Search, ScanLine, Notebook as Note, MessageSquare, Clock, User, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import type { Profile } from '../types';
 
 const Dashboard: React.FC = () => {
     const navigate = useNavigate();
+    const [profile, setProfile] = useState<Profile | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+                setProfile(data);
+            }
+            setLoading(false);
+        };
+        fetchProfile();
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <Loader2 className="animate-spin text-primary" size={32} />
+            </div>
+        );
+    }
+
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
     return (
         <div className="px-4 py-4 space-y-6">
             {/* Top Navigation Bar */}
             <header className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div
-                        className="size-10 rounded-full bg-cover bg-center border-2 border-white dark:border-slate-800 shadow-sm"
-                        style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuCTORBZwfG6sfxSD54HNHvO-4DXvkgu4m0ocqZ__nBEH7mGlMeB43Assnp3PesQyMhOsOKFKDOk1xyRhYBN56QXcK6Fe3fJPYPF_4DLiW8M4SMTdzn97_HrKdVet-iJ1b6nPbVN8y2_Mmln8wOctZiOiBJczNBd5GXugnCiDd4pkrjM7nCvqkfaAe_cIYwpr6dY0Ag2gnSm882UuYyygi3eqkczey72kTPXjL1iSMoo9HqKrxLvBxYRu8Yodr62bZXlbaUwmPaoCWdb")' }}
-                    />
+                    <div className="relative">
+                        <div className="size-11 rounded-2xl bg-primary/10 flex items-center justify-center text-primary overflow-hidden border-2 border-white dark:border-slate-800 shadow-sm transition-transform hover:scale-105"
+                            onClick={() => navigate('/settings')}>
+                            {profile?.avatar_url ? (
+                                <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                            ) : (
+                                <User size={24} />
+                            )}
+                        </div>
+                    </div>
                     <div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">Good morning</p>
-                        <h1 className="text-lg font-bold leading-tight">Miller Family</h1>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest">{greeting}</p>
+                        <h1 className="text-lg font-black leading-tight">{profile?.nice_name || profile?.full_name || 'Family Member'}</h1>
                     </div>
                 </div>
                 <div className="flex gap-2">

@@ -10,10 +10,13 @@ import Settings from './pages/Settings';
 import AIScanner from './pages/AIScanner';
 import Login from './pages/Login';
 import { Loader2 } from 'lucide-react';
+import { useTheme } from './hooks/useTheme';
 
 function App() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  useTheme(session?.user?.id);
 
   useEffect(() => {
     // 1. Check initial session

@@ -5,6 +5,8 @@ import type { Profile, UserRole } from '../types';
 import { usePermission } from '../hooks/usePermission';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '../lib/cropUtils';
+import { useTheme, themeColors, type ThemeColor, type ThemeMode } from '../hooks/useTheme';
+import { Palette, Sun, Moon, Monitor } from 'lucide-react';
 
 const Settings: React.FC = () => {
     const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -16,6 +18,12 @@ const Settings: React.FC = () => {
     const [globalApiKey, setGlobalApiKey] = useState('');
     const [personalApiKey, setPersonalApiKey] = useState('');
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+    // Theme State
+    const [themeColor, setThemeColor] = useState<ThemeColor>('indigo');
+    const [themeMode, setThemeMode] = useState<ThemeMode>('auto');
+    const [globalThemeColor, setGlobalThemeColor] = useState<ThemeColor>('indigo');
+    const [globalThemeMode, setGlobalThemeMode] = useState<ThemeMode>('auto');
 
     // Profile Edit State
     const [fullName, setFullName] = useState('');
@@ -32,6 +40,7 @@ const Settings: React.FC = () => {
     const [previewSize, setPreviewSize] = useState(0);
 
     const permissions = usePermission(myProfile);
+    const { refreshTheme } = useTheme(myProfile?.id);
 
     useEffect(() => {
         fetchData();
@@ -84,6 +93,23 @@ const Settings: React.FC = () => {
 
             if (globalKey) setGlobalApiKey(globalKey.value || '');
             if (personalKey) setPersonalApiKey(personalKey.value || '');
+
+            // Fetch Themes
+            const { data: globalTheme } = await supabase.from('app_settings').select('value').eq('key', 'DEFAULT_THEME').single();
+            if (globalTheme?.value) {
+                const parsed = typeof globalTheme.value === 'string' ? JSON.parse(globalTheme.value) : globalTheme.value;
+                setGlobalThemeColor(parsed.color || 'indigo');
+                setGlobalThemeMode(parsed.mode || 'auto');
+            }
+
+            if (user) {
+                const { data: userTheme } = await supabase.from('user_settings').select('value').eq('user_id', user.id).eq('key', 'THEME_PREFERENCE').single();
+                if (userTheme?.value) {
+                    const parsed = typeof userTheme.value === 'string' ? JSON.parse(userTheme.value) : userTheme.value;
+                    setThemeColor(parsed.color || 'indigo');
+                    setThemeMode(parsed.mode || 'auto');
+                }
+            }
 
         } catch (error) {
             console.error('Error fetching settings:', error);
@@ -234,6 +260,41 @@ const Settings: React.FC = () => {
     const handleSignOut = async () => {
         await supabase.auth.signOut();
         window.location.href = '/login';
+    };
+
+    const saveThemePreference = async (color: ThemeColor, mode: ThemeMode) => {
+        setThemeColor(color);
+        setThemeMode(mode);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            await supabase.from('user_settings').upsert({
+                user_id: user.id,
+                key: 'THEME_PREFERENCE',
+                value: { color, mode }
+            }, { onConflict: 'user_id,key' });
+            refreshTheme();
+        } catch (err) {
+            console.error('Save theme error:', err);
+        }
+    };
+
+    const saveGlobalTheme = async () => {
+        setUpdating('global-theme');
+        try {
+            const { error } = await supabase.from('app_settings').upsert({
+                key: 'DEFAULT_THEME',
+                value: { color: globalThemeColor, mode: globalThemeMode }
+            });
+            if (error) throw error;
+            setMessage({ type: 'success', text: 'Global family theme updated!' });
+            refreshTheme();
+            setTimeout(() => setMessage(null), 3000);
+        } catch (err: any) {
+            setMessage({ type: 'error', text: err.message });
+        } finally {
+            setUpdating(null);
+        }
     };
 
     if (loading) {
@@ -411,6 +472,109 @@ const Settings: React.FC = () => {
                 </div>
             </section>
 
+            {/* Theme Settings */}
+            <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 shadow-sm border border-slate-100 dark:border-slate-800 space-y-8">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="size-10 rounded-2xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-violet-600">
+                            <Palette size={24} />
+                        </div>
+                        <h2 className="text-xl font-black">Personal Appearance</h2>
+                    </div>
+                </div>
+
+                <div className="space-y-6">
+                    {/* Mode Selector */}
+                    <div className="space-y-3">
+                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Display Mode</label>
+                        <div className="flex gap-2 p-1.5 bg-slate-50 dark:bg-slate-800 rounded-2xl w-fit">
+                            {[
+                                { id: 'light', icon: Sun, label: 'Light' },
+                                { id: 'dark', icon: Moon, label: 'Dark' },
+                                { id: 'auto', icon: Monitor, label: 'Auto' }
+                            ].map((mode) => (
+                                <button
+                                    key={mode.id}
+                                    onClick={() => saveThemePreference(themeColor, mode.id as ThemeMode)}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${themeMode === mode.id ? 'bg-white dark:bg-slate-700 shadow-sm text-primary' : 'text-slate-400 hover:text-slate-600'}`}
+                                >
+                                    <mode.icon size={16} />
+                                    {mode.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Color Palettes */}
+                    <div className="space-y-3">
+                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Accent Color</label>
+                        <div className="grid grid-cols-5 sm:grid-cols-10 gap-3">
+                            {(Object.keys(themeColors) as ThemeColor[]).map((color) => (
+                                <button
+                                    key={color}
+                                    onClick={() => saveThemePreference(color, themeMode)}
+                                    className={`group relative size-10 rounded-xl transition-all hover:scale-110 active:scale-90 flex items-center justify-center ${themeColor === color ? 'ring-2 ring-offset-2 ring-primary dark:ring-offset-slate-900' : ''}`}
+                                    style={{ backgroundColor: themeColors[color] }}
+                                    title={color}
+                                >
+                                    {themeColor === color && <Check size={18} className="text-white" />}
+                                    <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
+                                        {color}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Admin Global Theme */}
+                {permissions.isAdmin && (
+                    <div className="pt-8 border-t border-slate-100 dark:border-slate-800 space-y-6">
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-1">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Family Global Default</h3>
+                                <p className="text-xs text-slate-500">Set the default appearance for all family members who haven't set their own.</p>
+                            </div>
+                            <button
+                                onClick={saveGlobalTheme}
+                                disabled={updating === 'global-theme'}
+                                className="bg-primary/10 text-primary hover:bg-primary hover:text-white px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2"
+                            >
+                                {updating === 'global-theme' ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                Set as Default
+                            </button>
+                        </div>
+                        <div className="flex flex-wrap gap-6 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800">
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Default Mode</label>
+                                <select
+                                    value={globalThemeMode}
+                                    onChange={(e) => setGlobalThemeMode(e.target.value as ThemeMode)}
+                                    className="bg-white dark:bg-slate-700 border-none rounded-xl px-3 py-2 text-xs font-bold outline-none ring-1 ring-slate-200 dark:ring-slate-600 focus:ring-primary h-10 min-w-32"
+                                >
+                                    <option value="light">Light</option>
+                                    <option value="dark">Dark</option>
+                                    <option value="auto">Auto (System)</option>
+                                </select>
+                            </div>
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Default Color</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {(Object.keys(themeColors) as ThemeColor[]).map((color) => (
+                                        <button
+                                            key={`global-${color}`}
+                                            onClick={() => setGlobalThemeColor(color)}
+                                            className={`size-8 rounded-lg transition-all ${globalThemeColor === color ? 'ring-2 ring-offset-2 ring-primary dark:ring-offset-slate-900 scale-110 shadow-lg' : 'opacity-60 hover:opacity-100'}`}
+                                            style={{ backgroundColor: themeColors[color] }}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </section>
+
             {/* Alerts */}
             {message && (
                 <div className={`p-5 rounded-3xl flex items-center justify-center gap-3 text-sm font-black border animate-in slide-in-from-top-4 duration-300 ${message.type === 'success' ? 'bg-green-50 border-green-100 text-green-700' : 'bg-red-50 border-red-100 text-red-700'}`}>
@@ -537,8 +701,8 @@ const Settings: React.FC = () => {
                                 <div className="space-y-4">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Live Preview & Size</p>
                                     <div className="flex items-center gap-6">
-                                        <div className="size-20 rounded-full overflow-hidden border-2 border-primary shadow-lg bg-white dark:bg-slate-800 shrink-0">
-                                            {previewUrl && <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />}
+                                        <div className="rounded-full overflow-hidden border-2 border-primary shadow-lg bg-white dark:bg-slate-800 shrink-0">
+                                            {previewUrl && <img src={previewUrl} alt="Preview" className="object-cover size-[128px]" />}
                                         </div>
                                         <div className="space-y-1">
                                             <p className="text-2xl font-black text-primary">{(previewSize / 1024).toFixed(1)} <span className="text-sm">kB</span></p>

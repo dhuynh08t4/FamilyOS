@@ -3,6 +3,8 @@ export type UserRole = 'admin' | 'member' | 'kid';
 export interface Profile {
   id: string;
   full_name: string;
+  nice_name: string | null;
+  username: string | null;
   avatar_url: string | null;
   role: UserRole;
   created_at: string;

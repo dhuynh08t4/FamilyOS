@@ -1,7 +1,15 @@
 import { createClient } from '@supabase/supabase-js'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL
-const serviceRoleKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt4YXNhc2pmdHJjbXVzYXhxenpqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDIzNjk4OCwiZXhwIjoyMDg1ODEyOTg4fQ.ycwHUYkrL6eTgx60eem9SrBsOK2q4u6hMkoQM62BErQ'
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!supabaseUrl || !serviceRoleKey) {
+    console.error('Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env')
+    process.exit(1)
+}
 
 const supabase = createClient(supabaseUrl, serviceRoleKey)
 

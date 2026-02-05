@@ -2,10 +2,10 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { supabase } from "./supabase";
 
 export const GEMINI_MODELS = [
-    'gemini-2.0-flash-exp',
-    'gemini-1.5-flash',
-    'gemini-1.5-pro',
-    'gemini-1.5-pro-latest'
+    'gemini-3-flash-preview',
+    'gemini-3-pro-preview',
+    'gemini-flash-latest',
+    'gemini-flash-lite-latest',
 ];
 
 export async function getGeminiApiKeys(): Promise<string[]> {

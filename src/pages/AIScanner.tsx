@@ -1,9 +1,17 @@
 import React, { useState, useRef } from 'react';
-import { ChevronLeft, ZoomIn, RefreshCw, Check, ChevronDown, CheckCircle2, Loader2, Sparkles, Upload, Settings } from 'lucide-react';
+import { ChevronLeft, ZoomIn, RefreshCw, Check, Loader2, Sparkles, Upload, Settings, Plus, Trash2, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { generateSmartContent, GEMINI_MODELS } from '../lib/gemini';
 import imageCompression from 'browser-image-compression';
+
+interface ScannedItem {
+    id: string;
+    amount: string;
+    date: string;
+    category: string;
+    note: string;
+}
 
 const AIScanner: React.FC = () => {
     const navigate = useNavigate();
@@ -15,11 +23,8 @@ const AIScanner: React.FC = () => {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [progress, setProgress] = useState(0);
 
-    // Form Data State
-    const [amount, setAmount] = useState('');
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-    const [category, setCategory] = useState('Groceries');
-    const [notes, setNotes] = useState('');
+    // Data State
+    const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [selectedModel, setSelectedModel] = useState(GEMINI_MODELS[0]);
 
@@ -45,14 +50,18 @@ const AIScanner: React.FC = () => {
                 const base64Data = (reader.result as string).split(',')[1];
                 setProgress(50);
 
-                const prompt = `Analyze this receipt image and extract the following data in JSON format:
-                {
-                    "amount": number,
-                    "date": "YYYY-MM-DD",
-                    "category": "string (one of: Groceries, Utilities, Dining Out, Entertainment, Transport, Health, Kids, Other)",
-                    "note": "brief summary of the purchase"
-                }
-                Return ONLY the JSON object.`;
+                const prompt = `Analyze this image which may contain ONE or MORE receipts/items. 
+                Extract transaction data for EACH distinct receipt or line item you can identify.
+                Return a JSON ARRAY of objects. Format:
+                [
+                    {
+                        "amount": number,
+                        "date": "YYYY-MM-DD",
+                        "category": "string (one of: Groceries, Utilities, Dining Out, Entertainment, Transport, Health, Kids, Other)",
+                        "note": "brief summary"
+                    }
+                ]
+                Return ONLY the JSON array.`;
 
                 const result = await generateSmartContent(
                     prompt,
@@ -67,11 +76,17 @@ const AIScanner: React.FC = () => {
                     // Clean response (Gemini sometimes adds markdown blocks)
                     const jsonStr = response.replace(/```json|```/g, '').trim();
                     const data = JSON.parse(jsonStr);
+                    const items = Array.isArray(data) ? data : [data];
 
-                    setAmount(data.amount.toString());
-                    setDate(data.date);
-                    setCategory(data.category);
-                    setNotes(data.note);
+                    const mappedItems = items.map((item: any) => ({
+                        id: Math.random().toString(36).substr(2, 9),
+                        amount: item.amount?.toString() || '',
+                        date: item.date || new Date().toISOString().split('T')[0],
+                        category: item.category || 'Groceries',
+                        note: item.note || ''
+                    }));
+
+                    setScannedItems(mappedItems);
                 } catch (e) {
                     console.error('Failed to parse AI response:', response);
                 }
@@ -87,14 +102,14 @@ const AIScanner: React.FC = () => {
     };
 
     const handleSave = async () => {
-        if (!amount || !selectedFile) return;
+        if (scannedItems.length === 0 || !selectedFile) return;
         setIsSaving(true);
 
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not authenticated');
 
-            // 1. Compress and Upload Image
+            // 1. Compress and Upload Image (Once for all items)
             const compressedFile = await imageCompression(selectedFile, { maxSizeMB: 1, maxWidthOrHeight: 1024 });
             const fileName = `${user.id}/${Date.now()}-${selectedFile.name}`;
 
@@ -107,18 +122,20 @@ const AIScanner: React.FC = () => {
             // 2. Get Public URL
             const { data: { publicUrl } } = supabase.storage.from('family-os').getPublicUrl(fileName);
 
-            // 3. Save to DB
+            // 3. Save to DB (Batch Insert)
+            const transactions = scannedItems.map(item => ({
+                user_id: user.id,
+                amount: parseFloat(item.amount) || 0,
+                category: item.category,
+                note: item.note,
+                date: item.date,
+                image_url: publicUrl,
+                type: 'expense'
+            }));
+
             const { error: dbError } = await supabase
                 .from('transactions')
-                .insert({
-                    user_id: user.id,
-                    amount: parseFloat(amount),
-                    category,
-                    note: notes,
-                    date,
-                    image_url: publicUrl,
-                    type: 'expense'
-                });
+                .insert(transactions);
 
             if (dbError) throw dbError;
 
@@ -129,6 +146,26 @@ const AIScanner: React.FC = () => {
         } finally {
             setIsSaving(false);
         }
+    };
+
+    const updateItem = (id: string, field: keyof ScannedItem, value: string) => {
+        setScannedItems(items => items.map(item =>
+            item.id === id ? { ...item, [field]: value } : item
+        ));
+    };
+
+    const removeItem = (id: string) => {
+        setScannedItems(items => items.filter(item => item.id !== id));
+    };
+
+    const addNewItem = () => {
+        setScannedItems(prev => [...prev, {
+            id: Math.random().toString(36).substr(2, 9),
+            amount: '',
+            date: new Date().toISOString().split('T')[0],
+            category: 'Groceries',
+            note: ''
+        }]);
     };
 
     return (
@@ -203,75 +240,98 @@ const AIScanner: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Extracted Details Form */}
+                {/* Extracted Details List */}
                 <section className="px-4 space-y-6 py-6 lg:px-0">
                     <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-bold">Review Details</h2>
-                        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
-                            <Sparkles size={10} className="text-primary" />
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">AI Insight</span>
+                        <h2 className="text-xl font-bold">Review Items ({scannedItems.length})</h2>
+                        <div className="flex items-center gap-2">
+                            <button onClick={addNewItem} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-primary">
+                                <Plus size={20} />
+                            </button>
+                            <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 px-2 py-1.5 rounded-xl">
+                                <Sparkles size={10} className="text-primary" />
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">AI Insight</span>
+                            </div>
                         </div>
                     </div>
 
                     <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Total Amount</label>
-                            <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-primary">$</span>
-                                <input
-                                    className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl py-4 pl-10 pr-12 text-2xl font-bold focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
-                                    type="number"
-                                    step="0.01"
-                                    value={amount}
-                                    onChange={(e) => setAmount(e.target.value)}
-                                />
-                                {amount && <CheckCircle2 className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500" size={24} />}
-                            </div>
-                        </div>
+                        {scannedItems.map((item, index) => (
+                            <div key={item.id} className="relative bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm space-y-4 group">
+                                <div className="absolute top-4 right-4 flex gap-2 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => removeItem(item.id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Date</label>
-                                <div className="relative">
+                                <span className="absolute -left-3 top-6 size-6 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-400 border border-slate-200 dark:border-slate-700">
+                                    {index + 1}
+                                </span>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 ml-1">Total Amount</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-primary">$</span>
+                                        <input
+                                            className="w-full bg-slate-50 dark:bg-slate-800/50 border-none rounded-xl py-3 pl-9 pr-4 text-xl font-bold focus:ring-2 focus:ring-primary outline-none transition-all"
+                                            type="number"
+                                            step="0.01"
+                                            value={item.amount}
+                                            onChange={(e) => updateItem(item.id, 'amount', e.target.value)}
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 ml-1">Date</label>
+                                        <input
+                                            className="w-full bg-slate-50 dark:bg-slate-800/50 border-none rounded-xl py-2.5 px-4 text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
+                                            type="date"
+                                            value={item.date}
+                                            onChange={(e) => updateItem(item.id, 'date', e.target.value)}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 ml-1">Category</label>
+                                        <div className="relative">
+                                            <select
+                                                className="w-full bg-slate-50 dark:bg-slate-800/50 border-none rounded-xl py-2.5 px-4 text-xs font-medium focus:ring-2 focus:ring-primary outline-none appearance-none"
+                                                value={item.category}
+                                                onChange={(e) => updateItem(item.id, 'category', e.target.value)}
+                                            >
+                                                <option>Groceries</option>
+                                                <option>Dining Out</option>
+                                                <option>Utilities</option>
+                                                <option>Entertainment</option>
+                                                <option>Transport</option>
+                                                <option>Health</option>
+                                                <option>Kids</option>
+                                                <option>Other</option>
+                                            </select>
+                                            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1 ml-1">Notes</label>
                                     <input
-                                        className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl py-3 px-4 text-sm font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none"
-                                        type="date"
-                                        value={date}
-                                        onChange={(e) => setDate(e.target.value)}
+                                        className="w-full bg-slate-50 dark:bg-slate-800/50 border-none rounded-xl py-2.5 px-4 text-xs font-medium focus:ring-2 focus:ring-primary outline-none"
+                                        placeholder="Description..."
+                                        value={item.note}
+                                        onChange={(e) => updateItem(item.id, 'note', e.target.value)}
                                     />
                                 </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Category</label>
-                                <div className="relative">
-                                    <select
-                                        className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl py-3 px-4 text-sm font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none appearance-none"
-                                        value={category}
-                                        onChange={(e) => setCategory(e.target.value)}
-                                    >
-                                        <option>Groceries</option>
-                                        <option>Dining Out</option>
-                                        <option>Utilities</option>
-                                        <option>Entertainment</option>
-                                        <option>Transport</option>
-                                        <option>Health</option>
-                                        <option>Kids</option>
-                                        <option>Other</option>
-                                    </select>
-                                    <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                </div>
+                        ))}
+                        {scannedItems.length === 0 && (
+                            <div className="py-12 text-center text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
+                                <p className="text-sm font-medium">No items detected yet.</p>
+                                <p className="text-xs">Upload a receipt to start.</p>
                             </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-500 dark:text-slate-400 mb-1.5 ml-1">Notes</label>
-                            <textarea
-                                className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl py-3 px-4 text-sm font-medium focus:ring-2 focus:ring-primary focus:border-primary outline-none min-h-[80px] resize-none"
-                                placeholder="Add a description..."
-                                value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
-                            />
-                        </div>
+                        )}
                     </div>
                 </section>
             </main>
@@ -288,11 +348,11 @@ const AIScanner: React.FC = () => {
                     </button>
                     <button
                         onClick={handleSave}
-                        disabled={isSaving || isProcessing || !amount}
+                        disabled={isSaving || isProcessing || scannedItems.length === 0}
                         className="flex items-center justify-center gap-2 py-4 rounded-xl bg-primary text-white font-bold shadow-lg shadow-primary/30 hover:opacity-90 transition-all active:scale-95 disabled:opacity-50"
                     >
                         {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
-                        Save to Family
+                        Save All ({scannedItems.length})
                     </button>
                 </div>
             </footer>

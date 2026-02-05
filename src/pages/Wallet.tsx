@@ -217,19 +217,64 @@ const Wallet: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="space-y-1">
-                    <p className="text-slate-500 text-sm font-medium">Total Monthly Spending</p>
-                    <h1 className="text-4xl font-extrabold tracking-tight">${totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2 })}</h1>
-                </div>
+                <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 relative overflow-hidden">
+                    {/* Decorative Background */}
+                    <div className="absolute -right-10 -top-10 size-64 bg-primary/5 rounded-full blur-3xl"></div>
+                    <div className="absolute -left-10 bottom-0 size-32 bg-primary/5 rounded-full blur-2xl"></div>
 
-                <div className="bg-primary/5 dark:bg-primary/10 rounded-2xl p-4 flex justify-between items-center border border-primary/10">
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Monthly Budget (Income)</p>
-                        <p className="text-xl font-bold">${totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                    </div>
-                    <div className="size-12 rounded-full border-4 border-primary/20 flex items-center justify-center relative">
-                        <div className="absolute inset-0 border-4 border-primary rounded-full" style={{ clipPath: `inset(0 0 ${totalIncome > 0 ? Math.max(0, 100 - (totalSpent / totalIncome * 100)) : 100}% 0)` }}></div>
-                        <span className="text-[10px] font-bold text-primary">{totalIncome > 0 ? Math.round((totalSpent / totalIncome) * 100) : 0}%</span>
+                    <div className="relative z-10 flex flex-col items-center text-center">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Remaining Balance</span>
+                        <h1 className={`text-5xl font-black tracking-tighter mb-8 ${totalIncome - totalSpent >= 0 ? 'text-slate-900 dark:text-white' : 'text-red-500'}`}>
+                            ${(totalIncome - totalSpent).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </h1>
+
+                        {/* Circular Progress Chart */}
+                        <div className="size-48 relative flex items-center justify-center">
+                            {/* Background Track */}
+                            <svg className="size-full -rotate-90 transform" viewBox="0 0 100 100">
+                                <circle
+                                    className="text-slate-100 dark:text-slate-800"
+                                    strokeWidth="8"
+                                    stroke="currentColor"
+                                    fill="transparent"
+                                    r="40"
+                                    cx="50"
+                                    cy="50"
+                                />
+                                {/* Progress Arc */}
+                                <circle
+                                    className={`transition-all duration-1000 ease-out ${totalIncome - totalSpent < 0 ? 'text-red-500' : 'text-primary'}`}
+                                    strokeWidth="8"
+                                    strokeDasharray={251.2}
+                                    strokeDashoffset={251.2 - ((totalIncome > 0 ? Math.min(totalSpent / totalIncome, 1) : 1) * 251.2)}
+                                    strokeLinecap="round"
+                                    stroke="currentColor"
+                                    fill="transparent"
+                                    r="40"
+                                    cx="50"
+                                    cy="50"
+                                />
+                            </svg>
+                            {/* Inner Text */}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className="text-3xl font-black text-slate-900 dark:text-white">
+                                    {totalIncome > 0 ? Math.round((totalSpent / totalIncome) * 100) : 0}%
+                                </span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Used</span>
+                            </div>
+                        </div>
+
+                        {/* Stats Grid */}
+                        <div className="w-full grid grid-cols-2 gap-8 mt-8 pt-8 border-t border-slate-100 dark:border-slate-800">
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Income</p>
+                                <p className="text-xl font-black text-green-500">+${totalIncome.toLocaleString()}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Spent</p>
+                                <p className="text-xl font-black text-red-500">-${totalSpent.toLocaleString()}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </header>

@@ -10,18 +10,42 @@ export const themeColors: Record<ThemeColor, string> = {
     rose: '#e11d48',
     amber: '#d97706',
     emerald: '#059669',
-    cyan: '#0891b2',
-    violet: '#7c3aed',
-    fuchsia: '#c026d3',
-    orange: '#ea580c',
-    blue: '#2563eb',
+    cyan: '#06b6d4',
+    violet: '#8b5cf6',
+    fuchsia: '#d946ef',
+    orange: '#f97316',
+    blue: '#3b82f6',
+};
+
+const updateFavicon = (color: string) => {
+    const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <rect width="32" height="32" rx="8" fill="${color}"/>
+      <path d="M16 7L14.5 12.5L9 14L14.5 15.5L16 21L17.5 15.5L23 14L17.5 12.5L16 7Z" fill="white"/>
+      <path d="M8 6V10M6 8H10" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M24 22V26M22 24H26" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  `.trim();
+
+    const encoded = encodeURIComponent(svg);
+    const dataUri = `data:image/svg+xml,${encoded}`;
+
+    let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+    if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.getElementsByTagName('head')[0].appendChild(link);
+    }
+    link.href = dataUri;
 };
 
 export const useTheme = (userId?: string) => {
     const applyTheme = (color: ThemeColor, mode: ThemeMode) => {
         // Apply color
         const root = document.documentElement;
-        root.style.setProperty('--primary', themeColors[color]);
+        const colorValue = themeColors[color];
+        root.style.setProperty('--primary', colorValue);
+        updateFavicon(colorValue);
 
         // Apply mode
         if (mode === 'dark') {

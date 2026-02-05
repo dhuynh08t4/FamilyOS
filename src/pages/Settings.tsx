@@ -27,12 +27,35 @@ const Settings: React.FC = () => {
     const [crop, setCrop] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+    const [quality, setQuality] = useState(0.8);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [previewSize, setPreviewSize] = useState(0);
 
     const permissions = usePermission(myProfile);
 
     useEffect(() => {
         fetchData();
     }, []);
+
+    // Effect to update preview whenever crop or quality changes
+    useEffect(() => {
+        const updatePreview = async () => {
+            if (cropImage && croppedAreaPixels) {
+                const blob = await getCroppedImg(cropImage, croppedAreaPixels, 128, quality);
+                if (blob) {
+                    if (previewUrl) URL.revokeObjectURL(previewUrl);
+                    setPreviewUrl(URL.createObjectURL(blob));
+                    setPreviewSize(blob.size);
+                }
+            }
+        };
+
+        const timeoutId = setTimeout(updatePreview, 100); // Debounce preview updates
+        return () => {
+            clearTimeout(timeoutId);
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
+        };
+    }, [croppedAreaPixels, quality, cropImage]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -103,8 +126,8 @@ const Settings: React.FC = () => {
 
         setUpdating('avatar');
         try {
-            // Get cropped blob (128px, low quality for < 20kB)
-            const croppedBlob = await getCroppedImg(cropImage, croppedAreaPixels, 128);
+            // Get cropped blob (128px, using selected quality)
+            const croppedBlob = await getCroppedImg(cropImage, croppedAreaPixels, 128, quality);
             if (!croppedBlob) throw new Error('Failed to crop image');
 
             const fileName = `${selectedProfile.id}-${Date.now()}.jpg`;
@@ -471,7 +494,7 @@ const Settings: React.FC = () => {
             {/* Crop Modal */}
             {cropImage && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[3rem] overflow-hidden flex flex-col shadow-2xl border border-white/10">
+                    <div className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-[3rem] overflow-hidden flex flex-col shadow-2xl border border-white/10 max-h-[95vh]">
                         <header className="px-8 py-6 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
                             <div className="flex items-center gap-3">
                                 <div className="size-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
@@ -493,52 +516,94 @@ const Settings: React.FC = () => {
                             </div>
                         </header>
 
-                        <div className="relative h-[400px] bg-slate-900">
-                            <Cropper
-                                image={cropImage}
-                                crop={crop}
-                                zoom={zoom}
-                                aspect={1}
-                                cropShape="round"
-                                onCropChange={setCrop}
-                                onZoomChange={setZoom}
-                                onCropComplete={onCropComplete}
-                            />
-                        </div>
-
-                        <footer className="p-8 space-y-6">
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                    <span>Zoom</span>
-                                    <span>{Math.round(zoom * 100)}%</span>
-                                </div>
-                                <input
-                                    type="range"
-                                    value={zoom}
-                                    min={1}
-                                    max={3}
-                                    step={0.1}
-                                    aria-labelledby="Zoom"
-                                    onChange={(e) => setZoom(Number(e.target.value))}
-                                    className="w-full accent-primary"
+                        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+                            {/* Cropper Area */}
+                            <div className="flex-1 relative bg-slate-900 min-h-[300px] lg:min-h-0">
+                                <Cropper
+                                    image={cropImage}
+                                    crop={crop}
+                                    zoom={zoom}
+                                    aspect={1}
+                                    cropShape="round"
+                                    onCropChange={setCrop}
+                                    onZoomChange={setZoom}
+                                    onCropComplete={onCropComplete}
                                 />
                             </div>
 
-                            <button
-                                onClick={handleCropSave}
-                                disabled={updating === 'avatar'}
-                                className="w-full bg-primary text-white py-5 rounded-[2rem] font-black text-lg shadow-xl shadow-primary/30 flex items-center justify-center gap-3 active:scale-95 transition-all disabled:opacity-50"
-                            >
-                                {updating === 'avatar' ? (
-                                    <Loader2 size={24} className="animate-spin" />
-                                ) : (
-                                    <>
-                                        <Check size={24} />
-                                        Save Perfect Shot
-                                    </>
-                                )}
-                            </button>
-                        </footer>
+                            {/* Preview & Controls Area */}
+                            <div className="w-full lg:w-80 bg-slate-50 dark:bg-slate-900/50 border-l border-slate-100 dark:border-slate-800 p-8 flex flex-col gap-8 overflow-y-auto">
+                                {/* Preview */}
+                                <div className="space-y-4">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Live Preview & Size</p>
+                                    <div className="flex items-center gap-6">
+                                        <div className="size-20 rounded-full overflow-hidden border-2 border-primary shadow-lg bg-white dark:bg-slate-800 shrink-0">
+                                            {previewUrl && <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />}
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-2xl font-black text-primary">{(previewSize / 1024).toFixed(1)} <span className="text-sm">kB</span></p>
+                                            <p className={`text-[10px] font-black uppercase ${previewSize > 20480 ? 'text-orange-500' : 'text-green-500'}`}>
+                                                {previewSize > 20480 ? 'Heavy' : 'Super Lean'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Controls */}
+                                <div className="space-y-6">
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            <span>Zoom</span>
+                                            <span>{Math.round(zoom * 100)}%</span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            value={zoom}
+                                            min={1}
+                                            max={3}
+                                            step={0.1}
+                                            aria-labelledby="Zoom"
+                                            onChange={(e) => setZoom(Number(e.target.value))}
+                                            className="w-full accent-primary pointer-events-auto"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            <span>Quality (Quality vs Size)</span>
+                                            <span>{Math.round(quality * 100)}%</span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            value={quality}
+                                            min={0.1}
+                                            max={1.0}
+                                            step={0.01}
+                                            aria-labelledby="Quality"
+                                            onChange={(e) => setQuality(Number(e.target.value))}
+                                            className="w-full accent-primary pointer-events-auto"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="mt-auto pt-4">
+                                    <button
+                                        onClick={handleCropSave}
+                                        disabled={updating === 'avatar'}
+                                        className="w-full bg-primary text-white py-5 rounded-[2rem] font-black text-lg shadow-xl shadow-primary/30 flex items-center justify-center gap-3 active:scale-95 transition-all disabled:opacity-50"
+                                    >
+                                        {updating === 'avatar' ? (
+                                            <Loader2 size={24} className="animate-spin" />
+                                        ) : (
+                                            <>
+                                                <Check size={24} />
+                                                Done
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

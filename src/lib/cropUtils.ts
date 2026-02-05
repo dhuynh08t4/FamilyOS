@@ -10,7 +10,8 @@ export const createImage = (url: string): Promise<HTMLImageElement> =>
 export async function getCroppedImg(
     imageSrc: string,
     pixelCrop: { x: number; y: number; width: number; height: number },
-    targetSize = 128
+    targetSize = 128,
+    quality = 0.8
 ): Promise<Blob | null> {
     const image = await createImage(imageSrc)
     const canvas = document.createElement('canvas')
@@ -37,10 +38,10 @@ export async function getCroppedImg(
         targetSize
     )
 
-    // As a blob with low quality to meet < 20kB goal
+    // As a blob with specified quality
     return new Promise((resolve) => {
         canvas.toBlob((blob) => {
             resolve(blob)
-        }, 'image/jpeg', 0.8) // 0.6 quality at 128px should easily be under 20kB
+        }, 'image/jpeg', quality)
     })
 }

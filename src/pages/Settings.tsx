@@ -428,6 +428,67 @@ const Settings: React.FC = () => {
                 </div>
             </section>
 
+            {/* Family Members Section */}
+            <section className="space-y-4">
+                <div className="flex items-center gap-3 px-2">
+                    <div className="size-10 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
+                        <Users size={24} />
+                    </div>
+                    <h2 className="text-xl font-black">Family Members</h2>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {profiles.map((profile) => (
+                        <div
+                            key={profile.id}
+                            onClick={() => permissions.isAdmin && handleSelectProfile(profile)}
+                            className={`
+                                p-5 rounded-[2rem] flex items-center justify-between border shadow-sm transition-all
+                                ${permissions.isAdmin ? 'cursor-pointer hover:scale-[1.02] active:scale-95' : ''}
+                                ${selectedProfile?.id === profile.id ? 'bg-primary/5 border-primary ring-2 ring-primary/10' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800'}
+                            `}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="size-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-slate-600 overflow-hidden relative">
+                                    {profile.avatar_url ? (
+                                        <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                                    ) : (
+                                        profile.full_name?.[0] || '?'
+                                    )}
+                                    {permissions.isAdmin && (
+                                        <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                                            <Edit3 size={16} />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="font-black text-sm truncate dark:text-white">{profile.full_name}</p>
+                                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">@{profile.username || 'n/a'}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {permissions.isAdmin && profile.id !== myProfile?.id ? (
+                                    <select
+                                        value={profile.role}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onChange={(e) => handleRoleUpdate(profile.id, e.target.value as UserRole)}
+                                        className="bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-2 py-1 text-[10px] font-black outline-none appearance-none cursor-pointer"
+                                    >
+                                        <option value="admin">AD</option>
+                                        <option value="member">MB</option>
+                                        <option value="kid">KD</option>
+                                    </select>
+                                ) : (
+                                    <span className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        {profile.role?.slice(0, 2)}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
             {/* AI Settings */}
             <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 shadow-sm border border-slate-100 dark:border-slate-800 space-y-6">
                 <div className="flex items-center justify-between">
@@ -583,66 +644,7 @@ const Settings: React.FC = () => {
                 </div>
             )}
 
-            {/* Family Members Section */}
-            <section className="space-y-4">
-                <div className="flex items-center gap-3 px-2">
-                    <div className="size-10 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
-                        <Users size={24} />
-                    </div>
-                    <h2 className="text-xl font-black">Family Members</h2>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {profiles.map((profile) => (
-                        <div
-                            key={profile.id}
-                            onClick={() => permissions.isAdmin && handleSelectProfile(profile)}
-                            className={`
-                                p-5 rounded-[2rem] flex items-center justify-between border shadow-sm transition-all
-                                ${permissions.isAdmin ? 'cursor-pointer hover:scale-[1.02] active:scale-95' : ''}
-                                ${selectedProfile?.id === profile.id ? 'bg-primary/5 border-primary ring-2 ring-primary/10' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800'}
-                            `}
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className="size-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-slate-600 overflow-hidden relative">
-                                    {profile.avatar_url ? (
-                                        <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-                                    ) : (
-                                        profile.full_name?.[0] || '?'
-                                    )}
-                                    {permissions.isAdmin && (
-                                        <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 flex items-center justify-center text-white transition-opacity">
-                                            <Edit3 size={16} />
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="font-black text-sm truncate dark:text-white">{profile.full_name}</p>
-                                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">@{profile.username || 'n/a'}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                {permissions.isAdmin && profile.id !== myProfile?.id ? (
-                                    <select
-                                        value={profile.role}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onChange={(e) => handleRoleUpdate(profile.id, e.target.value as UserRole)}
-                                        className="bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-2 py-1 text-[10px] font-black outline-none appearance-none cursor-pointer"
-                                    >
-                                        <option value="admin">AD</option>
-                                        <option value="member">MB</option>
-                                        <option value="kid">KD</option>
-                                    </select>
-                                ) : (
-                                    <span className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        {profile.role?.slice(0, 2)}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </section>
 
             {/* Sign Out */}
             <div className="pt-8">

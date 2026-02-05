@@ -83,7 +83,7 @@ const Login: React.FC = () => {
                 </form>
 
                 <div className="text-center">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Default password is 1 for new users</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider"></p>
                 </div>
             </div>
         </div>

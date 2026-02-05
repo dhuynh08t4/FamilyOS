@@ -485,24 +485,22 @@ const Settings: React.FC = () => {
                 <div className="space-y-4">
                     {permissions.isAdmin && (
                         <div>
-                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 text-slate-400">Global Gemini Key (Default)</label>
-                            <input
-                                type="password"
+                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 text-slate-400">Global Gemini Keys (Default) - One per line</label>
+                            <textarea
                                 value={globalApiKey}
                                 onChange={(e) => setGlobalApiKey(e.target.value)}
-                                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-primary outline-none font-medium text-xs lg:text-sm"
-                                placeholder="Enter global key..."
+                                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-primary outline-none font-medium text-xs lg:text-sm min-h-[100px] resize-y font-mono"
+                                placeholder="Enter global keys (one per line)..."
                             />
                         </div>
                     )}
                     <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 text-slate-400">Your Personal Gemini Key (Override)</label>
-                        <input
-                            type="password"
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 text-slate-400">Your Personal Gemini Keys (Override) - One per line</label>
+                        <textarea
                             value={personalApiKey}
                             onChange={(e) => setPersonalApiKey(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-primary outline-none font-medium text-xs lg:text-sm"
-                            placeholder="Enter personal key..."
+                            className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-primary outline-none font-medium text-xs lg:text-sm min-h-[100px] resize-y font-mono"
+                            placeholder="Enter personal keys (one per line)..."
                         />
                     </div>
                 </div>

@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { ChevronLeft, ZoomIn, RefreshCw, Check, Calendar, ChevronDown, CheckCircle2, Loader2, Sparkles, Upload } from 'lucide-react';
+import { ChevronLeft, ZoomIn, RefreshCw, Check, ChevronDown, CheckCircle2, Loader2, Sparkles, Upload, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { getGeminiModel } from '../lib/gemini';
+import { generateSmartContent, GEMINI_MODELS } from '../lib/gemini';
 import imageCompression from 'browser-image-compression';
 
 const AIScanner: React.FC = () => {
@@ -21,6 +21,7 @@ const AIScanner: React.FC = () => {
     const [category, setCategory] = useState('Groceries');
     const [notes, setNotes] = useState('');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [selectedModel, setSelectedModel] = useState(GEMINI_MODELS[0]);
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -35,7 +36,6 @@ const AIScanner: React.FC = () => {
         setIsProcessing(true);
         setProgress(10);
         try {
-            const model = await getGeminiModel();
             setProgress(30);
 
             // Convert file to base64 for Gemini
@@ -54,15 +54,11 @@ const AIScanner: React.FC = () => {
                 }
                 Return ONLY the JSON object.`;
 
-                const result = await model.generateContent([
+                const result = await generateSmartContent(
                     prompt,
-                    {
-                        inlineData: {
-                            data: base64Data,
-                            mimeType: file.type
-                        }
-                    }
-                ]);
+                    { data: base64Data, mimeType: file.type },
+                    selectedModel
+                );
 
                 const response = result.response.text();
                 setProgress(90);
@@ -102,7 +98,7 @@ const AIScanner: React.FC = () => {
             const compressedFile = await imageCompression(selectedFile, { maxSizeMB: 1, maxWidthOrHeight: 1024 });
             const fileName = `${user.id}/${Date.now()}-${selectedFile.name}`;
 
-            const { data: uploadData, error: uploadError } = await supabase.storage
+            const { error: uploadError } = await supabase.storage
                 .from('family-os')
                 .upload(fileName, compressedFile);
 
@@ -145,7 +141,18 @@ const AIScanner: React.FC = () => {
                     <ChevronLeft size={24} />
                 </button>
                 <h1 className="text-lg font-bold tracking-tight">AI Smart Scanner</h1>
-                <button className="text-primary font-semibold text-sm">Help</button>
+                <div className="relative">
+                    <select
+                        className="bg-gray-100 dark:bg-gray-800 text-xs font-bold py-2 pl-3 pr-8 rounded-xl appearance-none outline-none border-none"
+                        value={selectedModel}
+                        onChange={(e) => setSelectedModel(e.target.value)}
+                    >
+                        {GEMINI_MODELS.map(m => (
+                            <option key={m} value={m}>{m.replace('gemini-', '').replace('-preview', '')}</option>
+                        ))}
+                    </select>
+                    <Settings size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
             </header>
 
             <main className="max-w-md mx-auto pb-32 w-full lg:max-w-4xl lg:grid lg:grid-cols-2 lg:gap-8 lg:px-8">

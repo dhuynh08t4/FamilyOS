@@ -1,0 +1,15 @@
+# Family Chat Implementation
+
+## Overview
+A real-time messaging platform for family coordination. It supports text messages, photos, and live delivery status.
+
+## Features
+- **Real-time Messaging**: Instant message delivery using Supabase Realtime (broadcast/presence).
+- **Media Support**: Ability to share images (uploaded to `family-os` bucket).
+- **Presence**: Shows who is currently online (future enhancement).
+- **Responsive Layout**: Sidebar for Desktop (chat list), full-screen for Mobile.
+
+## Technical Details
+- **Subscription**: Dedicated channel `family_chat` for real-time insert events.
+- **Storage**: Messaging assets are stored in `family-os/chat/`.
+- **Database**: `messages` table with `user_id` and `content`.

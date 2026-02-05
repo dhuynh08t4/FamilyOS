@@ -1,21 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, ChevronDown, Trash2, Loader2, Plus, ScanLine, XCircle, Pencil, Save, TrendingUp } from 'lucide-react';
-import { FaShoppingCart, FaUtensils, FaBolt, FaFilm, FaHeartbeat, FaHome, FaChild, FaEllipsisH, FaMoneyBillWave } from 'react-icons/fa';
+import {
+    FaArrowLeft, FaChevronLeft, FaChevronRight, FaCalendarAlt, FaSpinner, FaPlus, FaQrcode, FaTimesCircle, FaPen, FaSave,
+    FaChartLine, FaTrash, FaChevronDown, FaShoppingCart, FaUtensils, FaBolt, FaFilm,
+    FaHeartbeat, FaHome, FaChild, FaEllipsisH, FaMoneyBillWave, FaBahai, FaChurch
+} from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Transaction, Profile } from '../types';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
+import { vi } from 'date-fns/locale';
 
 const categoryIcons: Record<string, any> = {
-    'Groceries': FaShoppingCart,
-    'Dining Out': FaUtensils,
-    'Utilities': FaBolt,
-    'Entertainment': FaFilm,
-    'Health': FaHeartbeat,
-    'Transport': FaHome,
-    'Kids': FaChild,
-    'Other': FaEllipsisH,
-    'Income': FaMoneyBillWave
+    'Dâng hiến': FaChurch,
+    // 'Đi chợ': FaShoppingCart,
+    'Ăn uống': FaUtensils,
+    'Mua sắm': FaShoppingCart,
+    'Nợ': FaBahai,
+    'Điện nước': FaBolt,
+    'Giải trí': FaFilm,
+    'Sức khỏe': FaHeartbeat,
+    'Di chuyển': FaHome,
+    'Con cái': FaChild,
+    'Khác': FaEllipsisH,
+    'Thu nhập': FaMoneyBillWave,
+    'Thu khác': FaMoneyBillWave
 };
 
 const Wallet: React.FC = () => {
@@ -28,18 +36,19 @@ const Wallet: React.FC = () => {
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [newTrans, setNewTrans] = useState({
         amount: '',
-        category: 'Groceries',
+        category: 'Đi chợ',
         note: '',
         date: new Date().toISOString().split('T')[0],
         type: 'expense' as 'income' | 'expense'
     });
     const [editingId, setEditingId] = useState<string | number | null>(null);
     const [saving, setSaving] = useState(false);
+    const [currentDate, setCurrentDate] = useState(new Date());
 
     // Filter and calculate breakdown inside the component where 'transactions' is available
     const categoriesBreakdown = Object.keys(categoryIcons).map(cat => {
         const spent = transactions
-            .filter(t => t.category === cat && t.type === 'expense')
+            .filter(t => (t.category === cat || (cat === 'Khác' && !categoryIcons[t.category])) && t.type === 'expense')
             .reduce((acc, curr) => acc + curr.amount, 0);
         return {
             label: cat,
@@ -52,7 +61,7 @@ const Wallet: React.FC = () => {
     const incomeBreakdown = transactions
         .filter(t => t.type === 'income')
         .reduce((acc, curr) => {
-            const cat = curr.category || 'Other';
+            const cat = curr.category || 'Khác';
             if (!acc[cat]) {
                 acc[cat] = {
                     label: cat,
@@ -83,16 +92,20 @@ const Wallet: React.FC = () => {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, []);
+    }, [currentDate]);
 
     const fetchData = async () => {
         try {
             // 1. Fetch transactions
+            const start = startOfMonth(currentDate).toISOString();
+            const end = endOfMonth(currentDate).toISOString();
+
             const { data: transData } = await supabase
                 .from('transactions')
                 .select('*')
-                .order('date', { ascending: false })
-                .limit(50);
+                .gte('date', start)
+                .lte('date', end)
+                .order('date', { ascending: false });
 
             if (transData) {
                 setTransactions(transData);
@@ -128,7 +141,7 @@ const Wallet: React.FC = () => {
     };
 
     const handleDelete = async (id: string | number) => {
-        if (!confirm('Are you sure you want to delete this transaction?')) return;
+        if (!confirm('Bạn có chắc chắn muốn xóa giao dịch này?')) return;
 
         // Optimistic UI update
         const originalTransactions = [...transactions];
@@ -147,7 +160,7 @@ const Wallet: React.FC = () => {
         const { error } = await supabase.from('transactions').delete().eq('id', id);
 
         if (error) {
-            alert('Error deleting transaction: ' + error.message);
+            alert('Lỗi khi xóa giao dịch: ' + error.message);
             // Revert if failed
             setTransactions(originalTransactions);
             fetchData();
@@ -158,7 +171,7 @@ const Wallet: React.FC = () => {
         setEditingId(t.id);
         setNewTrans({
             amount: t.amount.toString(),
-            category: t.category,
+            category: t.category, // Note: This might need mapping if old categories are in English
             note: t.note || '',
             date: t.date,
             type: t.type as 'income' | 'expense'
@@ -204,7 +217,7 @@ const Wallet: React.FC = () => {
             setEditingId(null);
             setNewTrans({
                 amount: '',
-                category: 'Groceries',
+                category: 'Đi chợ',
                 note: '',
                 date: new Date().toISOString().split('T')[0],
                 type: 'expense'
@@ -217,10 +230,12 @@ const Wallet: React.FC = () => {
         }
     };
 
+    const rowSpace = 'px-3 py-2';
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
-                <Loader2 className="animate-spin text-primary" size={40} />
+                <FaSpinner className="animate-spin text-primary" size={40} />
             </div>
         );
     }
@@ -231,12 +246,19 @@ const Wallet: React.FC = () => {
             <header className="px-6 py-6 space-y-4 max-w-4xl mx-auto">
                 <div className="flex items-center justify-between">
                     <button onClick={() => navigate(-1)} className="size-10 flex items-center justify-center rounded-full bg-white dark:bg-slate-800 shadow-sm">
-                        <ArrowLeft size={20} />
+                        <FaArrowLeft size={20} />
                     </button>
-                    <div className="flex items-center gap-2 bg-white dark:bg-slate-800 px-4 py-2 rounded-full shadow-sm">
-                        <Calendar size={16} className="text-primary" />
-                        <span className="text-xs font-bold uppercase tracking-wider">{format(new Date(), 'MMMM yyyy')}</span>
-                        <ChevronDown size={14} className="text-slate-400" />
+                    <div className="flex items-center gap-2 bg-white dark:bg-slate-800 px-2 py-1.5 rounded-full shadow-sm">
+                        <button onClick={() => setCurrentDate(prev => subMonths(prev, 1))} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 hover:text-primary">
+                            <FaChevronLeft size={12} />
+                        </button>
+                        <div className="flex items-center gap-2 px-2">
+                            <FaCalendarAlt size={14} className="text-primary" />
+                            <span className="text-xs font-bold uppercase tracking-wider min-w-[80px] text-center select-none">{format(currentDate, 'MMMM yyyy', { locale: vi })}</span>
+                        </div>
+                        <button onClick={() => setCurrentDate(prev => addMonths(prev, 1))} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 hover:text-primary">
+                            <FaChevronRight size={12} />
+                        </button>
                     </div>
                 </div>
 
@@ -246,8 +268,8 @@ const Wallet: React.FC = () => {
                     <div className="absolute -left-10 bottom-0 size-32 bg-primary/5 rounded-full blur-2xl"></div>
 
                     <div className="relative z-10 flex flex-col items-center text-center">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Remaining Balance</span>
-                        <h1 className={`text-5xl font-black tracking-tighter mb-8 ${totalIncome - totalSpent >= 0 ? 'text-slate-900 dark:text-white' : 'text-red-500'}`}>
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Số dư khả dụng</span>
+                        <h1 className={`text-3xl lg:text-5xl font-black tracking-tighter mb-8 ${totalIncome - totalSpent >= 0 ? 'text-slate-900 dark:text-white' : 'text-red-500'}`}>
                             ${(totalIncome - totalSpent).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </h1>
 
@@ -283,19 +305,19 @@ const Wallet: React.FC = () => {
                                 <span className="text-3xl font-black text-slate-900 dark:text-white">
                                     {totalIncome > 0 ? Math.round((totalSpent / totalIncome) * 100) : 0}%
                                 </span>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Used</span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Đã dùng</span>
                             </div>
                         </div>
 
                         {/* Stats Grid */}
                         <div className="w-full grid grid-cols-2 gap-8 mt-8 pt-8 border-t border-slate-100 dark:border-slate-800">
                             <div className="space-y-1">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Income</p>
-                                <p className="text-xl font-black text-green-500">+${totalIncome.toLocaleString()}</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tổng thu nhập</p>
+                                <p className="text-sm md:text-xl font-black text-green-500">+${totalIncome.toLocaleString()}</p>
                             </div>
                             <div className="space-y-1">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Spent</p>
-                                <p className="text-xl font-black text-red-500">-${totalSpent.toLocaleString()}</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tổng chi tiêu</p>
+                                <p className="text-sm md:text-xl font-black text-red-500">-${totalSpent.toLocaleString()}</p>
                             </div>
                         </div>
                     </div>
@@ -305,23 +327,24 @@ const Wallet: React.FC = () => {
             <main className="max-w-4xl mx-auto space-y-8 px-6">
                 {/* Category Breakdown */}
                 <section className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-800">
-                    <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-6">Category Analysis</h2>
+                    <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-6">Phân tích danh mục</h2>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 gap-8">
                         {/* Income Categories */}
                         <div className="space-y-4">
                             <h3 className="text-xs font-bold text-green-500 uppercase tracking-wider flex items-center gap-2">
-                                <TrendingUp size={16} /> Income Sources
+                                <FaChartLine size={16} /> Nguồn thu
                             </h3>
-                            <div className="grid gap-3">
+                            <div className="flex gap-3">
                                 {incomeBreakdownList.length > 0 ? incomeBreakdownList.map((cat: any, idx: number) => (
-                                    <div key={idx} className="bg-green-50/50 dark:bg-green-900/10 p-4 rounded-2xl border border-green-100 dark:border-green-900/20 flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
+                                    <div key={idx} className="bg-green-50/50 dark:bg-green-900/10 p-4 rounded-2xl border border-green-100 dark:border-green-900/20 flex items-center justify-between w-full">
+                                        <div className="flex items-center gap-3 ">
                                             <div className="size-10 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400">
-                                                {cat.icon ? <cat.icon size={20} /> : <TrendingUp size={20} />}
+                                                {cat.icon ? <cat.icon size={20} /> : <FaChartLine size={20} />}
                                             </div>
                                             <div>
                                                 <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{cat.label}</p>
+                                                <p className="text-lg font-black text-green-600 dark:text-green-400">+${cat.amount.toLocaleString()}</p>
                                                 <div className="flex items-center gap-1 mt-0.5">
                                                     <div className="h-1 w-12 bg-green-200 dark:bg-green-900/50 rounded-full overflow-hidden">
                                                         <div className="h-full bg-green-500" style={{ width: `${cat.percentage}%` }}></div>
@@ -330,11 +353,11 @@ const Wallet: React.FC = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <p className="text-lg font-black text-green-600 dark:text-green-400">+${cat.amount.toLocaleString()}</p>
+
                                     </div>
                                 )) : (
                                     <div className="p-8 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
-                                        <p className="text-sm text-slate-400 font-medium">No income data yet</p>
+                                        <p className="text-sm text-slate-400 font-medium">Chưa có dữ liệu thu nhập</p>
                                     </div>
                                 )}
                             </div>
@@ -343,9 +366,9 @@ const Wallet: React.FC = () => {
                         {/* Expense Categories */}
                         <div className="space-y-4">
                             <h3 className="text-xs font-bold text-red-500 uppercase tracking-wider flex items-center gap-2">
-                                <FaShoppingCart size={16} /> Expense Breakdown
+                                <FaShoppingCart size={16} /> Chi tiêu
                             </h3>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid gap-3 md:grid-cols-2">
                                 {categoriesBreakdown.map((cat, idx) => (
                                     <div key={idx} className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between h-32 relative overflow-hidden group">
                                         <div className="absolute right-0 top-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity text-primary">
@@ -365,7 +388,7 @@ const Wallet: React.FC = () => {
                                 ))}
                                 {categoriesBreakdown.length === 0 && (
                                     <div className="col-span-2 p-8 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
-                                        <p className="text-sm text-slate-400 font-medium">No expenses yet</p>
+                                        <p className="text-sm text-slate-400 font-medium">Chưa có dữ liệu chi tiêu</p>
                                     </div>
                                 )}
                             </div>
@@ -379,69 +402,75 @@ const Wallet: React.FC = () => {
                     className="w-full relative overflow-hidden bg-primary/10 dark:bg-primary/20 rounded-2xl p-5 flex items-center justify-between border border-primary/20 text-left transition-transform active:scale-[0.98]"
                 >
                     <div className="flex-1 pr-12">
-                        <p className="text-primary font-bold text-sm">AI Receipt Scanner</p>
-                        <p className="text-slate-600 dark:text-slate-300 text-xs mt-1">Snap a photo to automatically log expenses into categories.</p>
+                        <p className="text-primary font-bold text-sm">Máy quét hóa đơn AI</p>
+                        <p className="text-slate-600 dark:text-slate-300 text-xs mt-1">Chụp ảnh để tự động thống kê chi tiêu.</p>
                     </div>
                     <div className="size-12 bg-primary text-white rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-primary/30">
-                        <ScanLine size={28} />
+                        <FaQrcode size={28} />
                     </div>
                 </button>
 
                 {/* Recent Transactions List */}
                 <section>
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-widest">Recent Transactions</h2>
-                        <button className="text-xs font-bold text-primary">View All</button>
+                        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-widest">Giao dịch gần đây</h2>
+                        <button className="text-xs font-bold text-primary">Xem tất cả</button>
                     </div>
 
                     {/* Responsive: Table on Tablet/Desktop, Cards on Mobile */}
-                    <div className="hidden md:block bg-white dark:bg-slate-900 rounded-3xl overflow-hidden border border-slate-100 dark:border-slate-800">
-                        <table className="w-full text-left">
-                            <thead className="bg-slate-50 dark:bg-slate-800/50">
+
+                    <div className="hidden md:block bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 h-[70vh] overflow-y-auto relative custom-scrollbar">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-slate-50 dark:bg-slate-800 sticky top-0 z-10 shadow-sm">
                                 <tr>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Date</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Description</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Category</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Member</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Amount</th>
-                                    <th className="px-6 py-4 w-20"></th>
+                                    <th className={`${rowSpace} text-xs font-bold text-slate-400 uppercase tracking-widest`}>Ngày</th>
+                                    <th className={`${rowSpace} text-xs font-bold text-slate-400 uppercase tracking-widest`}>Mô tả</th>
+                                    <th className={`${rowSpace} text-xs font-bold text-slate-400 uppercase tracking-widest`}>Danh mục</th>
+                                    <th className={`${rowSpace} text-xs font-bold text-slate-400 uppercase tracking-widest`}>Thành viên</th>
+                                    <th className={`${rowSpace} text-xs font-bold text-slate-400 uppercase tracking-widest text-right`}>Số tiền</th>
+                                    <th className={`${rowSpace} w-20`}></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                 {transactions.map((t) => (
                                     <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
-                                        <td className="px-6 py-4 text-sm text-slate-500">{format(new Date(t.date), 'MMM dd')}</td>
-                                        <td className="px-6 py-4 font-bold text-sm">
-                                            {t.note || 'No description'}
+                                        <td className={`${rowSpace} text-sm text-slate-500`}>
+                                            <div className="flex flex-col">
+                                                <span className="text-sm whitespace-nowrap">{format(new Date(t.date), 'dd-MM', { locale: vi })}</span>
+                                                <span className="text-xs text-slate-300">{format(new Date(t.date), 'yyyy', { locale: vi })}</span>
+                                            </div>
+                                        </td>
+                                        <td className={`${rowSpace} font-bold text-sm`}>
+                                            {t.note || 'Không có mô tả'}
                                             {t.image_url && (
                                                 <div className="text-[10px] text-primary mt-1 flex items-center gap-1 font-bold">
-                                                    <Plus size={10} /> Image attached
+                                                    <FaPlus size={10} /> Đính kèm ảnh
                                                 </div>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-[10px] font-bold uppercase tracking-wider rounded-lg">
+                                        <td className={`${rowSpace}`}>
+                                            <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-[10px] font-bold uppercase tracking-wider rounded-lg whitespace-nowrap">
                                                 {t.category}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-slate-500 italic">
+                                        <td className={`${rowSpace} text-sm text-slate-500 italic`}>
                                             {profiles[t.user_id]?.nice_name || '...'}
                                         </td>
-                                        <td className={`px-6 py-4 text-right font-bold ${t.type === 'income' ? 'text-green-500' : ''}`}>
-                                            {t.type === 'income' ? '+' : '-'}${t.amount.toFixed(2)}
+                                        <td className={`${rowSpace} text-right font-bold ${t.type} ${t.type === 'income' ? 'text-green-500' : ''}`}>
+                                            {t.amount.toLocaleString('vi-VN')}
                                         </td>
-                                        <td className="px-6 py-4 text-right flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <td className={`${rowSpace} text-right flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity`}>
                                             <button
                                                 onClick={() => handleEdit(t)}
                                                 className="text-slate-400 hover:text-primary p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                                             >
-                                                <Pencil size={16} />
+                                                <FaPen size={16} />
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(t.id)}
                                                 className="text-slate-400 hover:text-red-500 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                                             >
-                                                <Trash2 size={16} />
+                                                <FaTrash size={16} />
                                             </button>
                                         </td>
                                     </tr>
@@ -453,7 +482,7 @@ const Wallet: React.FC = () => {
                     {/* Mobile List View */}
                     <div className="md:hidden space-y-3">
                         {transactions.map((t) => {
-                            const Icon = categoryIcons[t.category] || MoreHorizontal;
+                            const Icon = categoryIcons[t.category] || FaEllipsisH;
                             return (
                                 <div key={t.id} className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
                                     <div className="flex items-center gap-3">
@@ -462,7 +491,7 @@ const Wallet: React.FC = () => {
                                         </div>
                                         <div>
                                             <p className="text-sm font-bold truncate max-w-[150px]">{t.note || t.category}</p>
-                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{profiles[t.user_id]?.nice_name} • {format(new Date(t.date), 'MMM dd')}</p>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{profiles[t.user_id]?.nice_name} • {format(new Date(t.date), 'MMM dd', { locale: vi })}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
@@ -471,10 +500,10 @@ const Wallet: React.FC = () => {
                                         </p>
                                         <div className="flex items-center justify-end gap-2 mt-1">
                                             <button onClick={() => handleEdit(t)} className="text-slate-300 hover:text-primary transition-colors p-1">
-                                                <Pencil size={14} />
+                                                <FaPen size={14} />
                                             </button>
                                             <button onClick={() => handleDelete(t.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1">
-                                                <Trash2 size={14} />
+                                                <FaTrash size={14} />
                                             </button>
                                         </div>
                                     </div>
@@ -492,7 +521,7 @@ const Wallet: React.FC = () => {
                         setEditingId(null);
                         setNewTrans({
                             amount: '',
-                            category: 'Groceries',
+                            category: 'Đi chợ',
                             note: '',
                             date: new Date().toISOString().split('T')[0],
                             type: 'expense'
@@ -501,7 +530,7 @@ const Wallet: React.FC = () => {
                     }}
                     className="size-16 rounded-full bg-primary text-white shadow-xl shadow-primary/40 flex items-center justify-center transition-transform active:scale-90 lg:size-20"
                 >
-                    <Plus size={32} />
+                    <FaPlus size={32} />
                 </button>
             </div>
 
@@ -510,9 +539,9 @@ const Wallet: React.FC = () => {
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2.5rem] overflow-hidden flex flex-col shadow-2xl">
                         <header className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                            <h2 className="text-xl font-black">{editingId ? 'Edit Transaction' : 'Add Transaction'}</h2>
+                            <h2 className="text-xl font-black">{editingId ? 'Chỉnh sửa giao dịch' : 'Thêm giao dịch'}</h2>
                             <button onClick={() => setIsAddOpen(false)} className="text-slate-400 hover:text-slate-600">
-                                <XCircle size={24} />
+                                <FaTimesCircle size={24} />
                             </button>
                         </header>
                         <form onSubmit={handleSaveTransaction} className="p-8 space-y-6">
@@ -524,7 +553,7 @@ const Wallet: React.FC = () => {
                                         onClick={() => setNewTrans({ ...newTrans, type: t })}
                                         className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${newTrans.type === t ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-400'}`}
                                     >
-                                        {t}
+                                        {t === 'expense' ? 'Chi tiêu' : 'Thu nhập'}
                                     </button>
                                 ))}
                             </div>
@@ -552,7 +581,7 @@ const Wallet: React.FC = () => {
                                         >
                                             {Object.keys(categoryIcons).map(cat => <option key={cat}>{cat}</option>)}
                                         </select>
-                                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <FaChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                     </div>
                                     <input
                                         required
@@ -564,7 +593,7 @@ const Wallet: React.FC = () => {
                                 </div>
 
                                 <textarea
-                                    placeholder="Add a note (optional)..."
+                                    placeholder="Thêm ghi chú (tùy chọn)..."
                                     className="w-full bg-slate-50 dark:bg-slate-800 px-4 py-4 rounded-2xl text-sm font-medium outline-none focus:ring-2 focus:ring-primary min-h-[100px] resize-none"
                                     value={newTrans.note}
                                     onChange={e => setNewTrans({ ...newTrans, note: e.target.value })}
@@ -575,8 +604,8 @@ const Wallet: React.FC = () => {
                                 disabled={saving}
                                 className="w-full py-4 bg-primary text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-primary/30 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                             >
-                                {saving ? <Loader2 className="animate-spin" /> : (editingId ? <Save size={20} /> : <Plus size={20} />)}
-                                {editingId ? 'Save Changes' : 'Save Transaction'}
+                                {saving ? <FaSpinner className="animate-spin" /> : (editingId ? <FaSave size={20} /> : <FaPlus size={20} />)}
+                                {editingId ? 'Lưu thay đổi' : 'Lưu giao dịch'}
                             </button>
                         </form>
                     </div>

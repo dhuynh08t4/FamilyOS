@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-    LayoutGrid, Wallet, FileText, MessageSquare, Settings,
-    LogOut, User as UserIcon, Bell, Search, Menu, X, ChevronRight, Sparkles, Palette, ScanLine
-} from 'lucide-react';
+    FaThLarge, FaWallet, FaStickyNote, FaCommentDots, FaCog,
+    FaSignOutAlt, FaUser, FaBell, FaSearch, FaBars, FaTimes, FaChevronRight, FaMagic, FaPalette, FaQrcode
+} from 'react-icons/fa';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types';
 import { ThemeSelector } from './ThemeSelector';
@@ -22,12 +22,12 @@ const Layout: React.FC = () => {
     const [isSearchFocused, setIsSearchFocused] = useState(false);
 
     const navItems = [
-        { to: '/', icon: LayoutGrid, label: 'Dashboard' },
-        { to: '/wallet', icon: Wallet, label: 'Wallet' },
-        { to: '/scan', icon: ScanLine, label: 'Smart Scanner' },
-        { to: '/notes', icon: FileText, label: 'Notes' },
-        { to: '/chat', icon: MessageSquare, label: 'Messenger' },
-        { to: '/settings', icon: Settings, label: 'Settings' },
+        { to: '/', icon: FaThLarge, label: 'Tổng quan' },
+        { to: '/wallet', icon: FaWallet, label: 'Ví tiền' },
+        { to: '/scan', icon: FaQrcode, label: 'Quét thông minh' },
+        { to: '/notes', icon: FaStickyNote, label: 'Ghi chú' },
+        { to: '/chat', icon: FaCommentDots, label: 'Tin nhắn' },
+        { to: '/settings', icon: FaCog, label: 'Cài đặt' },
     ];
 
     useEffect(() => {
@@ -62,21 +62,21 @@ const Layout: React.FC = () => {
         // Search Nav
         navItems.forEach(item => {
             if (item.label.toLowerCase().includes(q)) {
-                results.push({ type: 'Navigation', label: item.label, to: item.to, icon: item.icon });
+                results.push({ type: 'Điều hướng', label: item.label, to: item.to, icon: item.icon });
             }
         });
 
         // Search Profiles
         allProfiles.forEach(p => {
             if (p.full_name?.toLowerCase().includes(q) || p.nice_name?.toLowerCase().includes(q) || p.username?.toLowerCase().includes(q)) {
-                results.push({ type: 'Family Member', label: p.nice_name || p.full_name || 'Member', to: '/settings', icon: UserIcon });
+                results.push({ type: 'Thành viên', label: p.nice_name || p.full_name || 'Thành viên', to: '/settings', icon: FaUser });
             }
         });
 
         // Search Notes
         allNotes.forEach(n => {
             if (n.title?.toLowerCase().includes(q) || n.content?.toLowerCase().includes(q)) {
-                results.push({ type: 'Note', label: n.title || 'Untitled', to: '/notes', icon: FileText });
+                results.push({ type: 'Ghi chú', label: n.title || 'Không tiêu đề', to: '/notes', icon: FaStickyNote });
             }
         });
 
@@ -100,7 +100,7 @@ const Layout: React.FC = () => {
                 <div className="p-8">
                     <div className="flex items-center gap-3 mb-10">
                         <div className="size-10 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/30">
-                            <Sparkles size={24} />
+                            <FaMagic size={24} />
                         </div>
                         <span className="text-xl font-black tracking-tight dark:text-white">FamilyOS</span>
                     </div>
@@ -129,8 +129,8 @@ const Layout: React.FC = () => {
                         onClick={handleSignOut}
                         className="flex items-center gap-3 px-4 py-3 w-full rounded-2xl font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
                     >
-                        <LogOut size={22} />
-                        <span>Logout</span>
+                        <FaSignOutAlt size={22} />
+                        <span>Đăng xuất</span>
                     </button>
                 </div>
             </aside>
@@ -141,10 +141,10 @@ const Layout: React.FC = () => {
                 <header className="hidden lg:flex items-center justify-between px-8 py-5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 z-40">
                     <div className="flex items-center gap-4 flex-1">
                         <div className="relative max-w-md w-full relative">
-                            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold" />
+                            <FaSearch size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold" />
                             <input
                                 className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-2xl py-2.5 pl-11 pr-4 text-sm font-medium outline-none focus:ring-2 focus:ring-primary h-11"
-                                placeholder="Search everything..."
+                                placeholder="Tìm kiếm mọi thứ..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 onFocus={() => setIsSearchFocused(true)}
@@ -169,18 +169,18 @@ const Layout: React.FC = () => {
                                                         <p className="text-sm font-bold truncate dark:text-white">{res.label}</p>
                                                         <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{res.type}</p>
                                                     </div>
-                                                    <ChevronRight size={16} className="text-slate-300" />
+                                                    <FaChevronRight size={16} className="text-slate-300" />
                                                 </button>
                                             ))
                                         ) : (
                                             <div className="p-8 text-center">
-                                                <p className="text-sm text-slate-400 font-medium">No results found for "{searchQuery}"</p>
+                                                <p className="text-sm text-slate-400 font-medium">Không tìm thấy kết quả cho "{searchQuery}"</p>
                                             </div>
                                         )}
                                     </div>
                                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Global Intelligent Search</p>
-                                        <Sparkles size={14} className="text-primary" />
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tìm kiếm thông minh toàn cầu</p>
+                                        <FaMagic size={14} className="text-primary" />
                                     </div>
                                 </div>
                             )}
@@ -189,7 +189,7 @@ const Layout: React.FC = () => {
 
                     <div className="flex items-center gap-6">
                         <button className="relative size-11 flex items-center justify-center rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-500 shadow-sm hover:bg-slate-50 transition-colors">
-                            <Bell size={20} />
+                            <FaBell size={20} />
                             <span className="absolute top-2 right-2 size-2 bg-red-500 border-2 border-white dark:border-slate-800 rounded-full"></span>
                         </button>
 
@@ -198,7 +198,7 @@ const Layout: React.FC = () => {
                                 onClick={() => setIsThemeOpen(!isThemeOpen)}
                                 className={`size-11 flex items-center justify-center rounded-2xl border transition-all ${isThemeOpen ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-500 shadow-sm hover:bg-slate-50'}`}
                             >
-                                <Palette size={20} />
+                                <FaPalette size={20} />
                             </button>
                             {isThemeOpen && (
                                 <>
@@ -251,28 +251,28 @@ const Layout: React.FC = () => {
                                             className="w-full flex items-center justify-between px-6 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                                         >
                                             <div className="flex items-center gap-3">
-                                                <UserIcon size={18} className="text-slate-400" />
-                                                <span className="text-sm font-bold">My Profile</span>
+                                                <FaUser size={18} className="text-slate-400" />
+                                                <span className="text-sm font-bold">Hồ sơ của tôi</span>
                                             </div>
-                                            <ChevronRight size={14} className="text-slate-300" />
+                                            <FaChevronRight size={14} className="text-slate-300" />
                                         </button>
                                         <button
                                             onClick={() => { navigate('/settings'); setIsProfileOpen(false); }}
                                             className="w-full flex items-center justify-between px-6 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                                         >
                                             <div className="flex items-center gap-3">
-                                                <Settings size={18} className="text-slate-400" />
-                                                <span className="text-sm font-bold">Settings</span>
+                                                <FaCog size={18} className="text-slate-400" />
+                                                <span className="text-sm font-bold">Cài đặt</span>
                                             </div>
-                                            <ChevronRight size={14} className="text-slate-300" />
+                                            <FaChevronRight size={14} className="text-slate-300" />
                                         </button>
                                         <div className="h-px bg-slate-100 dark:border-slate-800 my-2 mx-4"></div>
                                         <button
                                             onClick={handleSignOut}
                                             className="w-full flex items-center gap-3 px-6 py-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-400/10 transition-colors"
                                         >
-                                            <LogOut size={18} />
-                                            <span className="text-sm font-bold">Logout</span>
+                                            <FaSignOutAlt size={18} />
+                                            <span className="text-sm font-bold">Đăng xuất</span>
                                         </button>
                                     </div>
                                 </>
@@ -285,7 +285,7 @@ const Layout: React.FC = () => {
                 <header className="lg:hidden flex items-center justify-between px-6 py-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 z-40 shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="size-8 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
-                            <Sparkles size={18} />
+                            <FaMagic size={18} />
                         </div>
                         <span className="text-lg font-black tracking-tight dark:text-white">FamilyOS</span>
                     </div>
@@ -294,13 +294,13 @@ const Layout: React.FC = () => {
                             onClick={() => setIsThemeOpen(!isThemeOpen)}
                             className={`size-10 flex items-center justify-center rounded-xl transition-all ${isThemeOpen ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600'}`}
                         >
-                            <Palette size={20} />
+                            <FaPalette size={20} />
                         </button>
                         <button
                             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                             className="size-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600"
                         >
-                            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                            {isMobileMenuOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
                         </button>
                     </div>
 

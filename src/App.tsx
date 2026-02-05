@@ -9,7 +9,7 @@ import Chat from './pages/Chat';
 import Settings from './pages/Settings';
 import AIScanner from './pages/AIScanner';
 import Login from './pages/Login';
-import { Loader2 } from 'lucide-react';
+import { FaSpinner } from 'react-icons/fa';
 import { useTheme } from './hooks/useTheme';
 
 function App() {
@@ -36,7 +36,7 @@ function App() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background-light dark:bg-background-dark">
-        <Loader2 className="animate-spin text-primary" size={40} />
+        <FaSpinner className="animate-spin text-primary" size={40} />
       </div>
     );
   }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { LogIn, Lock, Mail, Loader2, Sparkles } from 'lucide-react';
+import { FaSignInAlt, FaLock, FaEnvelope, FaSpinner, FaMagic } from 'react-icons/fa';
 
 const Login: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -29,17 +29,17 @@ const Login: React.FC = () => {
             <div className="w-full max-w-md space-y-8 bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl shadow-primary/5 border border-slate-100 dark:border-slate-800">
                 <div className="text-center space-y-2">
                     <div className="size-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mx-auto mb-4">
-                        <Sparkles size={32} />
+                        <FaMagic size={32} />
                     </div>
                     <h1 className="text-3xl font-black tracking-tight">FamilyOS</h1>
-                    <p className="text-slate-500 font-medium">Welcome back to your family hub</p>
+                    <p className="text-slate-500 font-medium">Chào mừng trở lại với gia đình</p>
                 </div>
 
                 <form onSubmit={handleLogin} className="space-y-4">
                     <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Địa chỉ Email</label>
                         <div className="relative">
-                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            <FaEnvelope className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                             <input
                                 type="email"
                                 required
@@ -52,9 +52,9 @@ const Login: React.FC = () => {
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Password</label>
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Mật khẩu</label>
                         <div className="relative">
-                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                             <input
                                 type="password"
                                 required
@@ -77,8 +77,8 @@ const Login: React.FC = () => {
                         disabled={loading}
                         className="w-full bg-primary text-white py-4 rounded-2xl font-bold shadow-lg shadow-primary/30 transition-all active:scale-[0.98] hover:opacity-90 flex items-center justify-center gap-2"
                     >
-                        {loading ? <Loader2 size={20} className="animate-spin" /> : <LogIn size={20} />}
-                        Sign In
+                        {loading ? <FaSpinner size={20} className="animate-spin" /> : <FaSignInAlt size={20} />}
+                        Đăng nhập
                     </button>
                 </form>
 

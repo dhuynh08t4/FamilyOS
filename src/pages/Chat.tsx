@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Image as ImageIcon, Plus, MoreVertical, Search, Phone, Video, Info, Loader2, User } from 'lucide-react';
+import { FaPaperPlane, FaImage, FaPlus, FaSearch, FaSpinner, FaUser, FaVideo, FaInfoCircle } from 'react-icons/fa';
 import { supabase } from '../lib/supabase';
 import type { Message, Profile } from '../types';
 import { format } from 'date-fns';
+import { vi } from 'date-fns/locale';
 import imageCompression from 'browser-image-compression';
 
 const Chat: React.FC = () => {
@@ -64,7 +65,7 @@ const Chat: React.FC = () => {
             if (msgData) setMessages(msgData);
 
         } catch (error) {
-            console.error('Chat error:', error);
+            console.error('Lỗi trò chuyện:', error);
         } finally {
             setLoading(false);
         }
@@ -85,7 +86,7 @@ const Chat: React.FC = () => {
             });
             if (error) throw error;
         } catch (error) {
-            console.error('Send error:', error);
+            console.error('Lỗi gửi tin:', error);
         }
     };
 
@@ -108,14 +109,14 @@ const Chat: React.FC = () => {
 
             const { error: dbError } = await supabase.from('messages').insert({
                 user_id: currentUser,
-                content: 'Shared a photo',
+                content: 'Đã chia sẻ một ảnh',
                 type: 'image',
                 image_url: publicUrl
             });
 
             if (dbError) throw dbError;
         } catch (error) {
-            console.error('Upload error:', error);
+            console.error('Lỗi tải ảnh:', error);
         } finally {
             setSending(false);
         }
@@ -124,7 +125,7 @@ const Chat: React.FC = () => {
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
-                <Loader2 className="animate-spin text-primary" size={40} />
+                <FaSpinner className="animate-spin text-primary" size={40} />
             </div>
         );
     }
@@ -135,22 +136,22 @@ const Chat: React.FC = () => {
             <header className="px-4 py-3 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md">
                 <div className="flex items-center gap-3">
                     <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                        F
+                        <FaUser size={20} />
                     </div>
                     <div>
-                        <h1 className="text-sm font-bold">The Family OS</h1>
+                        <h1 className="text-sm font-bold">Gia đình</h1>
                         <p className="text-[10px] text-green-500 font-bold flex items-center gap-1">
                             <span className="size-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                            {Object.keys(profiles).length} family members
+                            {Object.keys(profiles).length} thành viên
                         </p>
                     </div>
                 </div>
                 <div className="flex gap-1">
                     <button className="size-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                        <Video size={20} className="text-slate-500" />
+                        <FaVideo size={20} className="text-slate-500" />
                     </button>
                     <button className="size-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                        <Info size={20} className="text-slate-500" />
+                        <FaInfoCircle size={20} className="text-slate-500" />
                     </button>
                 </div>
             </header>
@@ -161,16 +162,16 @@ const Chat: React.FC = () => {
                 <aside className="hidden lg:block w-80 border-r border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
                     <div className="p-4">
                         <div className="relative">
-                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input className="w-full bg-white dark:bg-slate-800 border-none rounded-xl py-2 pl-10 pr-4 text-xs font-medium outline-none" placeholder="Search family..." />
+                            <FaSearch size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input className="w-full bg-white dark:bg-slate-800 border-none rounded-xl py-2 pl-10 pr-4 text-xs font-medium outline-none" placeholder="Tìm kiếm thành viên..." />
                         </div>
                     </div>
                     <div className="space-y-1 px-2">
                         <div className="bg-primary/10 border-l-4 border-primary p-3 rounded-r-xl flex items-center gap-3">
                             <div className="size-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">#</div>
                             <div>
-                                <p className="text-sm font-bold">General Chat</p>
-                                <p className="text-[10px] text-slate-500 truncate">Family coordination channel</p>
+                                <p className="text-sm font-bold">Nhóm chung</p>
+                                <p className="text-[10px] text-slate-500 truncate">Kênh trò chuyện gia đình</p>
                             </div>
                         </div>
                     </div>
@@ -196,7 +197,7 @@ const Chat: React.FC = () => {
                                     <div className={`max-w-[75%] space-y-1`}>
                                         {!isMe && showAvatar && (
                                             <p className="text-[10px] font-bold text-slate-400 ml-1 mb-1">
-                                                {profile?.nice_name || 'Family Member'}
+                                                {profile?.nice_name || 'Thành viên'}
                                             </p>
                                         )}
                                         <div className={`
@@ -208,13 +209,13 @@ const Chat: React.FC = () => {
                                             {msg.type === 'image' && msg.image_url ? (
                                                 <div className="space-y-2">
                                                     <img src={msg.image_url} alt="Shared" className="rounded-lg max-w-full" />
-                                                    {msg.content !== 'Shared a photo' && <p>{msg.content}</p>}
+                                                    {msg.content !== 'Đã chia sẻ một ảnh' && <p>{msg.content}</p>}
                                                 </div>
                                             ) : (
                                                 <p>{msg.content}</p>
                                             )}
                                             <p className={`text-[8px] mt-1 text-right ${isMe ? 'text-white/70' : 'text-slate-400'}`}>
-                                                {format(new Date(msg.created_at), 'HH:mm')}
+                                                {format(new Date(msg.created_at), 'HH:mm', { locale: vi })}
                                             </p>
                                         </div>
                                     </div>
@@ -233,17 +234,17 @@ const Chat: React.FC = () => {
                                 disabled={sending}
                                 className="size-10 flex-shrink-0 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 transition-colors"
                             >
-                                {sending ? <Loader2 size={20} className="animate-spin" /> : <Plus size={22} />}
+                                {sending ? <FaSpinner size={20} className="animate-spin" /> : <FaPlus size={22} />}
                             </button>
                             <div className="flex-1 relative">
                                 <input
                                     className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-2xl px-4 py-3 text-sm font-medium outline-none focus:ring-2 focus:ring-primary/50"
-                                    placeholder="Family message..."
+                                    placeholder="Nhập tin nhắn..."
                                     value={inputText}
                                     onChange={(e) => setInputText(e.target.value)}
                                 />
                                 <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                                    <ImageIcon size={18} />
+                                    <FaImage size={18} />
                                 </button>
                             </div>
                             <button
@@ -251,7 +252,7 @@ const Chat: React.FC = () => {
                                 disabled={!inputText.trim() || sending}
                                 className="size-12 flex-shrink-0 flex items-center justify-center rounded-2xl bg-primary text-white shadow-lg shadow-primary/20 transition-transform active:scale-90 disabled:opacity-50 disabled:scale-100"
                             >
-                                <Send size={22} />
+                                <FaPaperPlane size={22} />
                             </button>
                             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} />
                         </form>

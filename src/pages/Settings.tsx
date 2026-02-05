@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { User, Shield, Key, Users, LogOut, Save, Loader2, CheckCircle2, AtSign, UserCircle, XCircle, Camera, Upload, Edit3, X, Scissors, Check } from 'lucide-react';
+import { FaUser, FaShieldAlt, FaKey, FaUsers, FaSignOutAlt, FaSave, FaSpinner, FaCheckCircle, FaAt, FaUserCircle, FaTimesCircle, FaCamera, FaUpload, FaEdit, FaTimes, FaCut, FaCheck, FaPalette, FaSun, FaMoon, FaDesktop } from 'react-icons/fa';
 import { supabase } from '../lib/supabase';
 import type { Profile, UserRole } from '../types';
 import { usePermission } from '../hooks/usePermission';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '../lib/cropUtils';
 import { useTheme, themeColors, type ThemeColor, type ThemeMode } from '../hooks/useTheme';
-import { Palette, Sun, Moon, Monitor } from 'lucide-react';
 import { ThemeSelector } from '../components/ThemeSelector';
 
 const Settings: React.FC = () => {
@@ -204,7 +203,7 @@ const Settings: React.FC = () => {
             .eq('id', selectedProfile.id);
 
         if (!error) {
-            setMessage({ type: 'success', text: 'Profile updated!' });
+            setMessage({ type: 'success', text: 'Cập nhật hồ sơ thành công!' });
             const updated = { ...selectedProfile, full_name: fullName, nice_name: niceName, username };
             setSelectedProfile(updated);
             if (selectedProfile.id === myProfile?.id) setMyProfile(updated);
@@ -240,10 +239,10 @@ const Settings: React.FC = () => {
             }
             promises.push(supabase.from('user_settings').upsert({ user_id: user.id, key: 'GEMINI_API_KEY', value: personalApiKey }, { onConflict: 'user_id,key' }));
             await Promise.all(promises);
-            setMessage({ type: 'success', text: 'API Keys saved!' });
+            setMessage({ type: 'success', text: 'Đã lưu khóa API!' });
             setTimeout(() => setMessage(null), 3000);
         } catch (err) {
-            setMessage({ type: 'error', text: 'Failed to save keys.' });
+            setMessage({ type: 'error', text: 'Lưu khóa thất bại.' });
         } finally {
             setUpdating(null);
         }
@@ -262,7 +261,7 @@ const Settings: React.FC = () => {
                 value: { color: globalThemeColor, mode: globalThemeMode }
             }, { onConflict: 'key' });
             if (error) throw error;
-            setMessage({ type: 'success', text: 'Global family theme updated!' });
+            setMessage({ type: 'success', text: 'Cập nhật giao diện gia đình thành công!' });
             refreshTheme();
             setTimeout(() => setMessage(null), 3000);
         } catch (err: any) {
@@ -275,7 +274,7 @@ const Settings: React.FC = () => {
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
-                <Loader2 className="animate-spin text-primary" size={40} />
+                <FaSpinner className="animate-spin text-primary" size={40} />
             </div>
         );
     }
@@ -293,18 +292,18 @@ const Settings: React.FC = () => {
                         {myProfile?.avatar_url ? (
                             <img src={myProfile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                         ) : (
-                            <User size={48} />
+                            <FaUser size={48} />
                         )}
                     </div>
                 </div>
 
                 <div className="flex-1 min-w-0 text-center md:text-left relative">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 text-slate-400">Logged in as</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 text-slate-400">Đăng nhập là</p>
                     <h1 className="text-3xl font-black truncate leading-tight dark:text-white">{myProfile?.full_name}</h1>
                     <div className="flex items-center justify-center md:justify-start gap-3 mt-2">
                         <span className="px-3 py-1 rounded-xl bg-primary text-white text-[11px] font-black uppercase tracking-widest shadow-lg shadow-primary/20">{myProfile?.role}</span>
                         <span className="text-slate-400 text-sm font-bold flex items-center gap-1">
-                            <AtSign size={14} />
+                            <FaAt size={14} />
                             {myProfile?.username || 'no-username'}
                         </span>
                     </div>
@@ -316,17 +315,17 @@ const Settings: React.FC = () => {
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <div className="size-10 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600">
-                            {isEditingSelf ? <UserCircle size={24} /> : <Shield size={24} />}
+                            {isEditingSelf ? <FaUserCircle size={24} /> : <FaShieldAlt size={24} />}
                         </div>
                         <div>
-                            <h2 className="text-xl font-black">{isEditingSelf ? 'My Profile' : 'Edit Member'}</h2>
-                            {!isEditingSelf && <p className="text-[10px] font-black text-slate-400 uppercase">Editing {selectedProfile?.nice_name}</p>}
+                            <h2 className="text-xl font-black">{isEditingSelf ? 'Hồ sơ của tôi' : 'Chỉnh sửa thành viên'}</h2>
+                            {!isEditingSelf && <p className="text-[10px] font-black text-slate-400 uppercase">Đang chỉnh sửa {selectedProfile?.nice_name}</p>}
                         </div>
                     </div>
                     <div className="flex gap-2">
                         {!isEditingSelf && (
                             <button onClick={() => handleSelectProfile(myProfile!)} className="px-4 py-2.5 rounded-2xl font-black text-xs text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-2">
-                                <X size={16} /> Cancel
+                                <FaTimes size={16} /> Hủy
                             </button>
                         )}
                         <button
@@ -334,8 +333,8 @@ const Settings: React.FC = () => {
                             disabled={updating === 'profile'}
                             className="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-2xl font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
                         >
-                            {updating === 'profile' ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                            {isEditingSelf ? 'Save My Changes' : 'Update Member'}
+                            {updating === 'profile' ? <FaSpinner size={18} className="animate-spin" /> : <FaSave size={18} />}
+                            {isEditingSelf ? 'Lưu thay đổi của tôi' : 'Cập nhật thành viên'}
                         </button>
                     </div>
                 </div>
@@ -352,17 +351,17 @@ const Settings: React.FC = () => {
                                 {selectedProfile?.avatar_url ? (
                                     <img src={selectedProfile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
                                 ) : (
-                                    <UserCircle size={64} />
+                                    <FaUserCircle size={64} />
                                 )}
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 flex flex-col items-center justify-center transition-opacity text-white">
-                                    {updating === 'avatar' ? <Loader2 size={24} className="animate-spin" /> : <Camera size={32} />}
-                                    <span className="text-[8px] font-black uppercase mt-1 tracking-widest text-white">Change Avatar</span>
+                                    {updating === 'avatar' ? <FaSpinner size={24} className="animate-spin" /> : <FaCamera size={32} />}
+                                    <span className="text-[8px] font-black uppercase mt-1 tracking-widest text-white">Đổi ảnh đại diện</span>
                                 </div>
                             </button>
                             <input type="file" ref={avatarInputRef} className="hidden" accept="image/*" onChange={handleAvatarChange} />
                             {updating === 'avatar' && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-slate-900/50 rounded-[2.5rem]">
-                                    <Loader2 size={32} className="animate-spin text-primary" />
+                                    <FaSpinner size={32} className="animate-spin text-primary" />
                                 </div>
                             )}
                         </div>
@@ -370,27 +369,27 @@ const Settings: React.FC = () => {
 
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1 text-slate-400">Full Name</label>
+                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1 text-slate-400">Họ và tên</label>
                             <input
                                 value={fullName}
                                 onChange={(e) => setFullName(e.target.value)}
                                 className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-primary font-medium"
-                                placeholder="Full Name"
+                                placeholder="Nhập họ và tên..."
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1 text-slate-400">Nice Name</label>
+                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1 text-slate-400">Tên gọi</label>
                             <input
                                 value={niceName}
                                 onChange={(e) => setNiceName(e.target.value)}
                                 className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-primary font-medium"
-                                placeholder="Nickname"
+                                placeholder="Biệt danh..."
                             />
                         </div>
                         <div className="space-y-2 md:col-span-2">
-                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1 text-slate-400">Username</label>
+                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1 text-slate-400">Tên đăng nhập</label>
                             <div className="relative">
-                                <AtSign size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <FaAt size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
@@ -407,9 +406,9 @@ const Settings: React.FC = () => {
             <section className="space-y-4">
                 <div className="flex items-center gap-3 px-2">
                     <div className="size-10 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
-                        <Users size={24} />
+                        <FaUsers size={24} />
                     </div>
-                    <h2 className="text-xl font-black">Family Members</h2>
+                    <h2 className="text-xl font-black">Thành viên gia đình</h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -432,7 +431,7 @@ const Settings: React.FC = () => {
                                     )}
                                     {permissions.isAdmin && (
                                         <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 flex items-center justify-center text-white transition-opacity">
-                                            <Edit3 size={16} />
+                                            <FaEdit size={16} />
                                         </div>
                                     )}
                                 </div>
@@ -469,38 +468,38 @@ const Settings: React.FC = () => {
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="size-10 rounded-2xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600">
-                            <Key size={24} />
+                            <FaKey size={24} />
                         </div>
-                        <h2 className="text-xl font-black">AI Configuration</h2>
+                        <h2 className="text-xl font-black">Cấu hình AI</h2>
                     </div>
                     <button
                         onClick={saveApiKeys}
                         disabled={updating === 'keys'}
                         className="bg-primary text-white p-2.5 rounded-2xl shadow-lg shadow-primary/20 transition-all active:scale-90 disabled:opacity-50"
                     >
-                        {updating === 'keys' ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}
+                        {updating === 'keys' ? <FaSpinner size={24} className="animate-spin" /> : <FaSave size={24} />}
                     </button>
                 </div>
 
                 <div className="space-y-4">
                     {permissions.isAdmin && (
                         <div>
-                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 text-slate-400">Global Gemini Keys (Default) - One per line</label>
+                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 text-slate-400">Khóa Gemini chung (Mặc định) - Một khóa mỗi dòng</label>
                             <textarea
                                 value={globalApiKey}
                                 onChange={(e) => setGlobalApiKey(e.target.value)}
                                 className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-primary outline-none font-medium text-xs lg:text-sm min-h-[100px] resize-y font-mono"
-                                placeholder="Enter global keys (one per line)..."
+                                placeholder="Nhập khóa chung (mỗi khóa một dòng)..."
                             />
                         </div>
                     )}
                     <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 text-slate-400">Your Personal Gemini Keys (Override) - One per line</label>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1 text-slate-400">Khóa Gemini cá nhân (Ghi đè) - Một khóa mỗi dòng</label>
                         <textarea
                             value={personalApiKey}
                             onChange={(e) => setPersonalApiKey(e.target.value)}
                             className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-primary outline-none font-medium text-xs lg:text-sm min-h-[100px] resize-y font-mono"
-                            placeholder="Enter personal keys (one per line)..."
+                            placeholder="Nhập khóa cá nhân (mỗi khóa một dòng)..."
                         />
                     </div>
                 </div>
@@ -511,9 +510,9 @@ const Settings: React.FC = () => {
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="size-10 rounded-2xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-violet-600">
-                            <Palette size={24} />
+                            <FaPalette size={24} />
                         </div>
-                        <h2 className="text-xl font-black">Personal Appearance</h2>
+                        <h2 className="text-xl font-black">Giao diện cá nhân</h2>
                     </div>
                 </div>
 
@@ -524,26 +523,26 @@ const Settings: React.FC = () => {
                     <div className="pt-8 border-t border-slate-100 dark:border-slate-800 space-y-6">
                         <div className="flex items-center justify-between">
                             <div className="space-y-1">
-                                <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Family Global Default</h3>
-                                <p className="text-xs text-slate-500">Set the default appearance for all family members who haven't set their own.</p>
+                                <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Mặc định chung cho gia đình</h3>
+                                <p className="text-xs text-slate-500">Đặt giao diện mặc định cho tất cả thành viên chưa tự cài đặt.</p>
                             </div>
                             <button
                                 onClick={saveGlobalTheme}
                                 disabled={updating === 'global-theme'}
                                 className="bg-primary/10 text-primary hover:bg-primary hover:text-white px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2"
                             >
-                                {updating === 'global-theme' ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                                Set as Default
+                                {updating === 'global-theme' ? <FaSpinner size={14} className="animate-spin" /> : <FaSave size={14} />}
+                                Đặt làm mặc định
                             </button>
                         </div>
                         <div className="space-y-8 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800">
                             <div className="space-y-4">
-                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider ml-1">Default Mode</p>
+                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider ml-1">Chê độ mặc định</p>
                                 <div className="flex gap-2 p-1.5 bg-white dark:bg-slate-800 rounded-2xl w-fit shadow-sm border border-slate-100 dark:border-slate-700">
                                     {[
-                                        { id: 'auto', icon: Monitor, label: 'Auto' },
-                                        { id: 'light', icon: Sun, label: 'Light' },
-                                        { id: 'dark', icon: Moon, label: 'Dark' }
+                                        { id: 'auto', icon: FaDesktop, label: 'Tự động' },
+                                        { id: 'light', icon: FaSun, label: 'Sáng' },
+                                        { id: 'dark', icon: FaMoon, label: 'Tối' }
                                     ].map((m) => (
                                         <button
                                             key={m.id}
@@ -557,7 +556,7 @@ const Settings: React.FC = () => {
                                 </div>
                             </div>
                             <div className="space-y-4">
-                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider ml-1">Default Color</p>
+                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider ml-1">Màu mặc định</p>
                                 <div className="flex flex-wrap gap-4">
                                     {(Object.keys(themeColors) as ThemeColor[]).map((color) => (
                                         <button
@@ -577,7 +576,7 @@ const Settings: React.FC = () => {
             {/* Alerts */}
             {message && (
                 <div className={`p-5 rounded-3xl flex items-center justify-center gap-3 text-sm font-black border animate-in slide-in-from-top-4 duration-300 ${message.type === 'success' ? 'bg-green-50 border-green-100 text-green-700' : 'bg-red-50 border-red-100 text-red-700'}`}>
-                    {message.type === 'success' ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
+                    {message.type === 'success' ? <FaCheckCircle size={20} /> : <FaTimesCircle size={20} />}
                     {message.text}
                 </div>
             )}
@@ -590,8 +589,8 @@ const Settings: React.FC = () => {
                     onClick={handleSignOut}
                     className="w-full bg-red-50 dark:bg-red-900/10 text-red-600 py-6 rounded-[2.5rem] font-black text-lg shadow-sm border border-red-100 dark:border-red-900/20 flex items-center justify-center gap-3 transition-all active:scale-[0.98] hover:bg-red-100"
                 >
-                    <LogOut size={24} />
-                    Sign Out From FamilyOS
+                    <FaSignOutAlt size={24} />
+                    Đăng xuất khỏi FamilyOS
                 </button>
             </div>
 
@@ -602,20 +601,20 @@ const Settings: React.FC = () => {
                         <header className="px-8 py-6 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
                             <div className="flex items-center gap-3">
                                 <div className="size-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                                    <Scissors size={20} />
+                                    <FaCut size={20} />
                                 </div>
-                                <h1 className="text-xl font-black">Crop Avatar</h1>
+                                <h1 className="text-xl font-black">Cắt ảnh đại diện</h1>
                             </div>
                             <div className="flex items-center gap-4">
                                 <button
                                     onClick={handleAvatarClick}
                                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-primary transition-colors"
                                 >
-                                    <Upload size={14} />
-                                    Change
+                                    <FaUpload size={14} />
+                                    Chọn ảnh
                                 </button>
                                 <button onClick={() => setCropImage(null)} className="text-slate-400 hover:text-slate-600 transition-colors">
-                                    <X size={24} />
+                                    <FaTimes size={24} />
                                 </button>
                             </div>
                         </header>
@@ -639,7 +638,7 @@ const Settings: React.FC = () => {
                             <div className="w-full lg:w-80 bg-slate-50 dark:bg-slate-900/50 border-l border-slate-100 dark:border-slate-800 p-8 flex flex-col gap-8 overflow-y-auto">
                                 {/* Preview */}
                                 <div className="space-y-4">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Live Preview & Size</p>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Xem trước & Kích thước</p>
                                     <div className="flex items-center gap-6">
                                         <div className="rounded-full overflow-hidden border-2 border-primary shadow-lg bg-white dark:bg-slate-800 shrink-0">
                                             {previewUrl && <img src={previewUrl} alt="Preview" className="object-cover size-[128px]" />}
@@ -647,7 +646,7 @@ const Settings: React.FC = () => {
                                         <div className="space-y-1">
                                             <p className="text-2xl font-black text-primary">{(previewSize / 1024).toFixed(1)} <span className="text-sm">kB</span></p>
                                             <p className={`text-[10px] font-black uppercase ${previewSize > 20480 ? 'text-orange-500' : 'text-green-500'}`}>
-                                                {previewSize > 20480 ? 'Heavy' : 'Super Lean'}
+                                                {previewSize > 20480 ? 'Nặng' : 'Siêu nhẹ'}
                                             </p>
                                         </div>
                                     </div>
@@ -657,7 +656,7 @@ const Settings: React.FC = () => {
                                 <div className="space-y-6">
                                     <div className="space-y-3">
                                         <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            <span>Zoom</span>
+                                            <span>Thu phóng</span>
                                             <span>{Math.round(zoom * 100)}%</span>
                                         </div>
                                         <input
@@ -674,7 +673,7 @@ const Settings: React.FC = () => {
 
                                     <div className="space-y-3">
                                         <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            <span>Quality (Quality vs Size)</span>
+                                            <span>Chất lượng (Kèm kích thước)</span>
                                             <span>{Math.round(quality * 100)}%</span>
                                         </div>
                                         <input
@@ -697,11 +696,11 @@ const Settings: React.FC = () => {
                                         className="w-full bg-primary text-white py-5 rounded-[2rem] font-black text-lg shadow-xl shadow-primary/30 flex items-center justify-center gap-3 active:scale-95 transition-all disabled:opacity-50"
                                     >
                                         {updating === 'avatar' ? (
-                                            <Loader2 size={24} className="animate-spin" />
+                                            <FaSpinner size={24} className="animate-spin" />
                                         ) : (
                                             <>
-                                                <Check size={24} />
-                                                Done
+                                                <FaCheck size={24} />
+                                                Hoàn tất
                                             </>
                                         )}
                                     </button>

@@ -1,5 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, ShoppingCart, Bolt, Film, Plus, ScanLine, ChevronDown, Trash2, Loader2, Utensils, Heart, Home, Package, MoreHorizontal, XCircle, Pencil, Save } from 'lucide-react';
+import { ArrowLeft, Calendar, ShoppingCart, Bolt, Film, Plus, ScanLine, ChevronDown, Trash2, Loader2, Utensils, Heart, Home, Package, MoreHorizontal, XCircle, Pencil, Save, TrendingUp } from 'lucide-react';
+// ... (keep existing imports)
+
+// ...
+
+const categoriesBreakdown = Object.keys(categoryIcons).map(cat => {
+    const spent = transactions
+        .filter(t => t.category === cat && t.type === 'expense')
+        .reduce((acc, curr) => acc + curr.amount, 0);
+    return {
+        label: cat,
+        amount: spent,
+        percentage: totalSpent > 0 ? (spent / totalSpent) * 100 : 0,
+        icon: categoryIcons[cat]
+    };
+}).filter(c => c.amount > 0).sort((a, b) => b.amount - a.amount);
+
+const incomeBreakdown = transactions
+    .filter(t => t.type === 'income')
+    .reduce((acc, curr) => {
+        const cat = curr.category || 'Other';
+        if (!acc[cat]) {
+            acc[cat] = {
+                label: cat,
+                amount: 0,
+                icon: categoryIcons[cat] || TrendingUp
+            };
+        }
+        acc[cat].amount += curr.amount;
+        return acc;
+    }, {} as Record<string, any>);
+
+const incomeBreakdownList = Object.values(incomeBreakdown).map((item: any) => ({
+    ...item,
+    percentage: totalIncome > 0 ? (item.amount / totalIncome) * 100 : 0
+})).sort((a: any, b: any) => b.amount - a.amount);
+
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Transaction, Profile } from '../types';
@@ -224,8 +260,8 @@ const Wallet: React.FC = () => {
 
                     <div className="relative z-10 flex flex-col items-center text-center">
                         <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Remaining Balance</span>
-                        <h1 className={`text-5xl font-black tracking-tighter mb-8 ${totalIncome - totalSpent >= 0 ? 'text-slate-900 dark:text-white' : 'text-red-500'}`}>
-                            ${(totalIncome - totalSpent).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        <h1 className={`text-5xl font-black tracking-tighter mb-8 ${totalIncome + totalSpent >= 0 ? 'text-slate-900 dark:text-white' : 'text-red-500'}`}>
+                            ${(totalIncome + totalSpent).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </h1>
 
                         {/* Circular Progress Chart */}
@@ -281,27 +317,72 @@ const Wallet: React.FC = () => {
 
             <main className="max-w-4xl mx-auto space-y-8 px-6">
                 {/* Category Donut & Legend (Tablet/Desktop friendly) */}
+                {/* Category Breakdown */}
                 <section className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-800">
-                    <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-4">Category Breakdown</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                        <div className="flex flex-wrap gap-2">
-                            {categoriesBreakdown.map((cat, idx) => (
-                                <div key={idx} className="flex-1 min-w-[140px] bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-6">Category Analysis</h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Income Categories */}
+                        <div className="space-y-4">
+                            <h3 className="text-xs font-bold text-green-500 uppercase tracking-wider flex items-center gap-2">
+                                <TrendingUp size={16} /> Income Sources
+                            </h3>
+                            <div className="grid gap-3">
+                                {incomeBreakdownList.length > 0 ? incomeBreakdownList.map((cat: any, idx: number) => (
+                                    <div key={idx} className="bg-green-50/50 dark:bg-green-900/10 p-4 rounded-2xl border border-green-100 dark:border-green-900/20 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="size-10 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400">
+                                                {cat.icon ? <cat.icon size={20} /> : <TrendingUp size={20} />}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{cat.label}</p>
+                                                <div className="flex items-center gap-1 mt-0.5">
+                                                    <div className="h-1 w-12 bg-green-200 dark:bg-green-900/50 rounded-full overflow-hidden">
+                                                        <div className="h-full bg-green-500" style={{ width: `${cat.percentage}%` }}></div>
+                                                    </div>
+                                                    <span className="text-[10px] font-bold text-green-600 dark:text-green-400">{cat.percentage.toFixed(0)}%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p className="text-lg font-black text-green-600 dark:text-green-400">+${cat.amount.toLocaleString()}</p>
+                                    </div>
+                                )) : (
+                                    <div className="p-8 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                                        <p className="text-sm text-slate-400 font-medium">No income data yet</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Expense Categories */}
+                        <div className="space-y-4">
+                            <h3 className="text-xs font-bold text-red-500 uppercase tracking-wider flex items-center gap-2">
+                                <ShoppingCart size={16} /> Expense Breakdown
+                            </h3>
+                            <div className="grid grid-cols-2 gap-3">
+                                {categoriesBreakdown.map((cat, idx) => (
+                                    <div key={idx} className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between h-32 relative overflow-hidden group">
+                                        <div className="absolute right-0 top-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity text-primary">
+                                            <cat.icon size={64} />
+                                        </div>
+                                        <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-2 relative z-10">
                                             <cat.icon size={16} />
                                         </div>
-                                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{cat.label}</span>
+                                        <div className="relative z-10">
+                                            <p className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-0.5">{cat.label}</p>
+                                            <p className="text-lg font-black text-slate-700 dark:text-slate-200">${cat.amount.toLocaleString()}</p>
+                                        </div>
+                                        <div className="mt-2 w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden relative z-10">
+                                            <div className="h-full bg-primary" style={{ width: `${cat.percentage}%` }}></div>
+                                        </div>
                                     </div>
-                                    <div className="flex items-baseline justify-between gap-1">
-                                        <span className="text-lg font-bold">${cat.amount.toFixed(0)}</span>
-                                        <span className="text-[10px] font-bold text-primary">{cat.percentage.toFixed(0)}%</span>
+                                ))}
+                                {categoriesBreakdown.length === 0 && (
+                                    <div className="col-span-2 p-8 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                                        <p className="text-sm text-slate-400 font-medium">No expenses yet</p>
                                     </div>
-                                    <div className="mt-2 w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                        <div className="h-full bg-primary" style={{ width: `${cat.percentage}%` }}></div>
-                                    </div>
-                                </div>
-                            ))}
+                                )}
+                            </div>
                         </div>
                     </div>
                 </section>

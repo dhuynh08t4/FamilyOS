@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Shield, Key, Users, ChevronRight, LogOut, Save, Loader2, CheckCircle2, AtSign, UserCircle, XCircle, Camera, Upload } from 'lucide-react';
+import { User, Shield, Key, Users, ChevronRight, LogOut, Save, Loader2, CheckCircle2, AtSign, UserCircle, XCircle, Camera, Upload, Edit3, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Profile, UserRole } from '../types';
 import { usePermission } from '../hooks/usePermission';
@@ -9,6 +9,7 @@ const Settings: React.FC = () => {
     const avatarInputRef = useRef<HTMLInputElement>(null);
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [myProfile, setMyProfile] = useState<Profile | null>(null);
+    const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState<string | null>(null);
     const [globalApiKey, setGlobalApiKey] = useState('');
@@ -42,9 +43,8 @@ const Settings: React.FC = () => {
                 const current = profilesData.find(p => p.id === user.id);
                 if (current) {
                     setMyProfile(current);
-                    setFullName(current.full_name || '');
-                    setNiceName(current.nice_name || '');
-                    setUsername(current.username || '');
+                    // Default to self for editing
+                    handleSelectProfile(current);
                 }
             }
 
@@ -63,53 +63,57 @@ const Settings: React.FC = () => {
         }
     };
 
+    const handleSelectProfile = (profile: Profile) => {
+        setSelectedProfile(profile);
+        setFullName(profile.full_name || '');
+        setNiceName(profile.nice_name || '');
+        setUsername(profile.username || '');
+        // Scroll to edit section on mobile
+        if (window.innerWidth < 768) {
+            document.getElementById('profile-edit-section')?.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
     const handleAvatarClick = () => {
         avatarInputRef.current?.click();
     };
 
     const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file || !myProfile) return;
+        if (!file || !selectedProfile) return;
 
         setUpdating('avatar');
         try {
-            // Resize to max 256x256
-            const options = {
-                maxSizeMB: 0.2,
-                maxWidthOrHeight: 256,
-                useWebWorker: true
-            };
+            const options = { maxSizeMB: 0.2, maxWidthOrHeight: 256, useWebWorker: true };
             const compressedFile = await imageCompression(file, options);
 
             const fileExt = file.name.split('.').pop();
-            const fileName = `${myProfile.id}-${Math.random()}.${fileExt}`;
+            const fileName = `${selectedProfile.id}-${Math.random()}.${fileExt}`;
             const filePath = `avatars/${fileName}`;
 
-            // Upload to 'avatar' bucket
             const { error: uploadError } = await supabase.storage
                 .from('avatar')
                 .upload(filePath, compressedFile);
 
             if (uploadError) throw uploadError;
 
-            // Get Public URL
             const { data: { publicUrl } } = supabase.storage.from('avatar').getPublicUrl(filePath);
 
-            // Update profile
             const { error: updateError } = await supabase
                 .from('profiles')
                 .update({ avatar_url: publicUrl })
-                .eq('id', myProfile.id);
+                .eq('id', selectedProfile.id);
 
             if (updateError) throw updateError;
 
-            setMyProfile({ ...myProfile, avatar_url: publicUrl });
-            setProfiles(profiles.map(p => p.id === myProfile.id ? { ...p, avatar_url: publicUrl } : p));
-            setMessage({ type: 'success', text: 'Avatar updated successfully!' });
-            setTimeout(() => setMessage(null), 3000);
+            const updated = { ...selectedProfile, avatar_url: publicUrl };
+            setSelectedProfile(updated);
+            if (selectedProfile.id === myProfile?.id) setMyProfile(updated);
+            setProfiles(profiles.map(p => p.id === selectedProfile.id ? updated : p));
 
+            setMessage({ type: 'success', text: 'Avatar updated!' });
+            setTimeout(() => setMessage(null), 3000);
         } catch (error: any) {
-            console.error('Avatar upload error:', error);
             setMessage({ type: 'error', text: error.message || 'Failed to upload avatar' });
         } finally {
             setUpdating(null);
@@ -117,8 +121,8 @@ const Settings: React.FC = () => {
         }
     };
 
-    const handleUpdateMyProfile = async () => {
-        if (!myProfile) return;
+    const handleUpdateProfile = async () => {
+        if (!selectedProfile) return;
         setUpdating('profile');
 
         const { error } = await supabase
@@ -129,12 +133,14 @@ const Settings: React.FC = () => {
                 username: username,
                 updated_at: new Date().toISOString()
             })
-            .eq('id', myProfile.id);
+            .eq('id', selectedProfile.id);
 
         if (!error) {
             setMessage({ type: 'success', text: 'Profile updated!' });
-            setMyProfile({ ...myProfile, full_name: fullName, nice_name: niceName, username });
-            setProfiles(profiles.map(p => p.id === myProfile.id ? { ...p, full_name: fullName, nice_name: niceName, username } : p));
+            const updated = { ...selectedProfile, full_name: fullName, nice_name: niceName, username };
+            setSelectedProfile(updated);
+            if (selectedProfile.id === myProfile?.id) setMyProfile(updated);
+            setProfiles(profiles.map(p => p.id === selectedProfile.id ? updated : p));
             setTimeout(() => setMessage(null), 3000);
         } else {
             setMessage({ type: 'error', text: error.message });
@@ -160,13 +166,11 @@ const Settings: React.FC = () => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
-
             const promises = [];
             if (permissions.isAdmin) {
                 promises.push(supabase.from('app_settings').upsert({ key: 'GEMINI_API_KEY', value: globalApiKey }));
             }
             promises.push(supabase.from('user_settings').upsert({ user_id: user.id, key: 'GEMINI_API_KEY', value: personalApiKey }, { onConflict: 'user_id,key' }));
-
             await Promise.all(promises);
             setMessage({ type: 'success', text: 'API Keys saved!' });
             setTimeout(() => setMessage(null), 3000);
@@ -190,36 +194,27 @@ const Settings: React.FC = () => {
         );
     }
 
+    const isEditingSelf = selectedProfile?.id === myProfile?.id;
+
     return (
         <div className="px-4 py-6 max-w-4xl mx-auto space-y-8 pb-32">
-            <header className="flex items-center gap-6 bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
-                {/* Decorative background overlay */}
+            <header className="flex flex-col md:flex-row items-center gap-6 bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
                 <div className="absolute top-0 right-0 size-64 bg-primary/5 rounded-full -mr-20 -mt-20 blur-3xl transition-colors group-hover:bg-primary/10"></div>
 
                 <div className="relative">
-                    <button
-                        onClick={handleAvatarClick}
-                        disabled={updating === 'avatar'}
-                        className="size-24 rounded-3xl bg-primary/10 flex items-center justify-center text-primary relative shadow-inner overflow-hidden group/avatar active:scale-95 transition-all"
-                    >
+                    <div className="size-24 rounded-3xl bg-primary/10 flex items-center justify-center text-primary relative shadow-inner overflow-hidden border border-slate-100 dark:border-slate-800">
                         {myProfile?.avatar_url ? (
                             <img src={myProfile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                         ) : (
                             <User size={48} />
                         )}
-
-                        {/* Hover Overlay */}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition-opacity text-white">
-                            {updating === 'avatar' ? <Loader2 size={24} className="animate-spin" /> : <Camera size={24} />}
-                        </div>
-                    </button>
-                    <input type="file" ref={avatarInputRef} className="hidden" accept="image/*" onChange={handleAvatarChange} />
-                    <div className="absolute -bottom-1 -right-1 bg-green-500 size-6 border-4 border-white dark:border-slate-900 rounded-full shadow-sm"></div>
+                    </div>
                 </div>
 
-                <div className="flex-1 min-w-0 relative">
+                <div className="flex-1 min-w-0 text-center md:text-left relative">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Logged in as</p>
                     <h1 className="text-3xl font-black truncate leading-tight dark:text-white">{myProfile?.full_name}</h1>
-                    <div className="flex items-center gap-3 mt-2">
+                    <div className="flex items-center justify-center md:justify-start gap-3 mt-2">
                         <span className="px-3 py-1 rounded-xl bg-primary text-white text-[11px] font-black uppercase tracking-widest shadow-lg shadow-primary/20">{myProfile?.role}</span>
                         <span className="text-slate-400 text-sm font-bold flex items-center gap-1">
                             <AtSign size={14} />
@@ -229,54 +224,93 @@ const Settings: React.FC = () => {
                 </div>
             </header>
 
-            {/* Edit My Profile */}
-            <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 shadow-sm border border-slate-100 dark:border-slate-800 space-y-6">
-                <div className="flex items-center justify-between">
+            {/* Profile Edit Section */}
+            <section id="profile-edit-section" className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 shadow-sm border border-slate-100 dark:border-slate-800 space-y-6 scroll-mt-6">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <div className="size-10 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600">
-                            <UserCircle size={24} />
+                            {isEditingSelf ? <UserCircle size={24} /> : <Shield size={24} />}
                         </div>
-                        <h2 className="text-xl font-black">My Profile</h2>
+                        <div>
+                            <h2 className="text-xl font-black">{isEditingSelf ? 'My Profile' : 'Edit Member'}</h2>
+                            {!isEditingSelf && <p className="text-[10px] font-black text-slate-400 uppercase">Editing {selectedProfile?.nice_name}</p>}
+                        </div>
                     </div>
-                    <button
-                        onClick={handleUpdateMyProfile}
-                        disabled={updating === 'profile'}
-                        className="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-2xl font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
-                    >
-                        {updating === 'profile' ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                        Save Changes
-                    </button>
+                    <div className="flex gap-2">
+                        {!isEditingSelf && (
+                            <button onClick={() => handleSelectProfile(myProfile!)} className="px-4 py-2.5 rounded-2xl font-black text-xs text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-2">
+                                <X size={16} /> Cancel
+                            </button>
+                        )}
+                        <button
+                            onClick={handleUpdateProfile}
+                            disabled={updating === 'profile'}
+                            className="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-2xl font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                            {updating === 'profile' ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                            {isEditingSelf ? 'Save My Changes' : 'Update Member'}
+                        </button>
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
-                        <input
-                            value={fullName}
-                            onChange={(e) => setFullName(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-primary font-medium"
-                            placeholder="Full Name"
-                        />
+                <div className="flex flex-col md:flex-row gap-8">
+                    {/* Avatar Upload per profile */}
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="relative group/avatar">
+                            <button
+                                onClick={handleAvatarClick}
+                                disabled={updating === 'avatar'}
+                                className="size-32 rounded-[2.5rem] bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-300 relative overflow-hidden border-2 border-dashed border-slate-200 dark:border-slate-700 transition-all active:scale-95"
+                            >
+                                {selectedProfile?.avatar_url ? (
+                                    <img src={selectedProfile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                                ) : (
+                                    <UserCircle size={64} />
+                                )}
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 flex flex-col items-center justify-center transition-opacity text-white">
+                                    {updating === 'avatar' ? <Loader2 size={24} className="animate-spin" /> : <Camera size={32} />}
+                                    <span className="text-[8px] font-black uppercase mt-1">Change Avatar</span>
+                                </div>
+                            </button>
+                            <input type="file" ref={avatarInputRef} className="hidden" accept="image/*" onChange={handleAvatarChange} />
+                            {updating === 'avatar' && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-slate-900/50 rounded-[2.5rem]">
+                                    <Loader2 size={32} className="animate-spin text-primary" />
+                                </div>
+                            )}
+                        </div>
                     </div>
-                    <div className="space-y-2">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Nice Name (Short)</label>
-                        <input
-                            value={niceName}
-                            onChange={(e) => setNiceName(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-primary font-medium"
-                            placeholder="Nickname"
-                        />
-                    </div>
-                    <div className="space-y-2 md:col-span-2">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Username</label>
-                        <div className="relative">
-                            <AtSign size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
+
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
                             <input
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-12 py-4 outline-none focus:ring-2 focus:ring-primary font-medium"
-                                placeholder="username"
+                                value={fullName}
+                                onChange={(e) => setFullName(e.target.value)}
+                                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-primary font-medium"
+                                placeholder="Full Name"
                             />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Nice Name</label>
+                            <input
+                                value={niceName}
+                                onChange={(e) => setNiceName(e.target.value)}
+                                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-primary font-medium"
+                                placeholder="Nickname"
+                            />
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Username</label>
+                            <div className="relative">
+                                <AtSign size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-12 py-4 outline-none focus:ring-2 focus:ring-primary font-medium"
+                                    placeholder="username"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -308,7 +342,7 @@ const Settings: React.FC = () => {
                                 type="password"
                                 value={globalApiKey}
                                 onChange={(e) => setGlobalApiKey(e.target.value)}
-                                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-primary outline-none font-medium"
+                                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-primary outline-none font-medium text-xs lg:text-sm"
                                 placeholder="Enter global key..."
                             />
                         </div>
@@ -319,7 +353,7 @@ const Settings: React.FC = () => {
                             type="password"
                             value={personalApiKey}
                             onChange={(e) => setPersonalApiKey(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-primary outline-none font-medium"
+                            className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-primary outline-none font-medium text-xs lg:text-sm"
                             placeholder="Enter personal key..."
                         />
                     </div>
@@ -345,13 +379,26 @@ const Settings: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {profiles.map((profile) => (
-                        <div key={profile.id} className="bg-white dark:bg-slate-900 p-5 rounded-[2rem] flex items-center justify-between border border-slate-100 dark:border-slate-800 shadow-sm transition-transform hover:scale-[1.02]">
+                        <div
+                            key={profile.id}
+                            onClick={() => permissions.isAdmin && handleSelectProfile(profile)}
+                            className={`
+                                p-5 rounded-[2rem] flex items-center justify-between border shadow-sm transition-all
+                                ${permissions.isAdmin ? 'cursor-pointer hover:scale-[1.02] active:scale-95' : ''}
+                                ${selectedProfile?.id === profile.id ? 'bg-primary/5 border-primary ring-2 ring-primary/10' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800'}
+                            `}
+                        >
                             <div className="flex items-center gap-4">
-                                <div className="size-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-slate-600 overflow-hidden">
+                                <div className="size-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-slate-600 overflow-hidden relative">
                                     {profile.avatar_url ? (
                                         <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                                     ) : (
                                         profile.full_name[0]
+                                    )}
+                                    {permissions.isAdmin && (
+                                        <div className="absolute inset-0 bg-black/20 opacity-0 hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                                            <Edit3 size={16} />
+                                        </div>
                                     )}
                                 </div>
                                 <div className="min-w-0">
@@ -363,6 +410,7 @@ const Settings: React.FC = () => {
                                 {permissions.isAdmin && profile.id !== myProfile?.id ? (
                                     <select
                                         value={profile.role}
+                                        onClick={(e) => e.stopPropagation()}
                                         onChange={(e) => handleRoleUpdate(profile.id, e.target.value as UserRole)}
                                         className="bg-slate-50 dark:bg-slate-800 border-none rounded-xl px-2 py-1 text-[10px] font-black outline-none appearance-none cursor-pointer"
                                     >

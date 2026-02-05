@@ -236,7 +236,7 @@ const Settings: React.FC = () => {
             if (!user) return;
             const promises = [];
             if (permissions.isAdmin) {
-                promises.push(supabase.from('app_settings').upsert({ key: 'GEMINI_API_KEY', value: globalApiKey }));
+                promises.push(supabase.from('app_settings').upsert({ key: 'GEMINI_API_KEY', value: globalApiKey }, { onConflict: 'key' }));
             }
             promises.push(supabase.from('user_settings').upsert({ user_id: user.id, key: 'GEMINI_API_KEY', value: personalApiKey }, { onConflict: 'user_id,key' }));
             await Promise.all(promises);
@@ -260,7 +260,7 @@ const Settings: React.FC = () => {
             const { error } = await supabase.from('app_settings').upsert({
                 key: 'DEFAULT_THEME',
                 value: { color: globalThemeColor, mode: globalThemeMode }
-            });
+            }, { onConflict: 'key' });
             if (error) throw error;
             setMessage({ type: 'success', text: 'Global family theme updated!' });
             refreshTheme();

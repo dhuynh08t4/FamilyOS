@@ -519,9 +519,7 @@ const Settings: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="max-w-md">
-                    <ThemeSelector userId={myProfile?.id} />
-                </div>
+                <ThemeSelector userId={myProfile?.id} variant="inline" />
 
                 {/* Admin Global Theme */}
                 {permissions.isAdmin && (

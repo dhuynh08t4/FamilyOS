@@ -6,9 +6,10 @@ import { supabase } from '../lib/supabase';
 interface ThemeSelectorProps {
     userId?: string;
     onClose?: () => void;
+    variant?: 'popup' | 'inline';
 }
 
-export const ThemeSelector: React.FC<ThemeSelectorProps> = ({ userId, onClose }) => {
+export const ThemeSelector: React.FC<ThemeSelectorProps> = ({ userId, onClose, variant = 'popup' }) => {
     const [themeColor, setThemeColor] = useState<ThemeColor>('indigo');
     const [themeMode, setThemeMode] = useState<ThemeMode>('auto');
     const { refreshTheme } = useTheme(userId);
@@ -52,6 +53,52 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({ userId, onClose })
             console.error('Save theme error:', err);
         }
     };
+
+    if (variant === 'inline') {
+        return (
+            <div className="space-y-8">
+                <div className="space-y-4">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Display Mode</label>
+                    <div className="flex gap-2 p-1.5 bg-slate-50 dark:bg-slate-800 rounded-2xl w-fit">
+                        {[
+                            { id: 'light', icon: Sun, label: 'Light' },
+                            { id: 'dark', icon: Moon, label: 'Dark' },
+                            { id: 'auto', icon: Monitor, label: 'Auto' }
+                        ].map((m) => (
+                            <button
+                                key={m.id}
+                                onClick={() => saveTheme(themeColor, m.id as ThemeMode)}
+                                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${themeMode === m.id ? 'bg-white dark:bg-slate-700 shadow-sm text-primary' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                <m.icon size={16} />
+                                {m.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Accent Color</label>
+                    <div className="flex flex-wrap gap-4">
+                        {(Object.keys(themeColors) as ThemeColor[]).map((color) => (
+                            <button
+                                key={color}
+                                onClick={() => saveTheme(color, themeMode)}
+                                className={`group relative size-12 rounded-2xl transition-all hover:scale-110 active:scale-95 flex items-center justify-center ${themeColor === color ? 'ring-2 ring-primary ring-offset-4 dark:ring-offset-slate-900 shadow-lg' : ''}`}
+                                style={{ backgroundColor: themeColors[color] }}
+                                title={color}
+                            >
+                                {themeColor === color && <Check size={20} className="text-white" />}
+                                <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
+                                    {color}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-6 space-y-6 bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-800 w-72">

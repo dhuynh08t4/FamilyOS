@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, ShoppingCart, Bolt, Film, Plus, ScanLine, ChevronDown, Trash2, Loader2, Utensils, Heart, Home, Package, MoreHorizontal, XCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, ShoppingCart, Bolt, Film, Plus, ScanLine, ChevronDown, Trash2, Loader2, Utensils, Heart, Home, Package, MoreHorizontal, XCircle, Pencil, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Transaction, Profile } from '../types';
@@ -30,6 +30,7 @@ const Wallet: React.FC = () => {
         date: new Date().toISOString().split('T')[0],
         type: 'expense' as 'income' | 'expense'
     });
+    const [editingId, setEditingId] = useState<string | number | null>(null);
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -108,24 +109,54 @@ const Wallet: React.FC = () => {
         }
     };
 
-    const handleAdd = async (e: React.FormEvent) => {
+    const handleEdit = (t: Transaction) => {
+        setEditingId(t.id);
+        setNewTrans({
+            amount: t.amount.toString(),
+            category: t.category,
+            note: t.note || '',
+            date: t.date,
+            type: t.type as 'income' | 'expense'
+        });
+        setIsAddOpen(true);
+    };
+
+    const handleSaveTransaction = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            const { error } = await supabase.from('transactions').insert({
+            const transactionData = {
                 user_id: user.id,
                 amount: parseFloat(newTrans.amount),
                 category: newTrans.category,
                 note: newTrans.note,
                 date: newTrans.date,
                 type: newTrans.type
-            });
+            };
+
+            let error;
+            if (editingId) {
+                // Update existing
+                const { error: updateError } = await supabase
+                    .from('transactions')
+                    .update(transactionData)
+                    .eq('id', editingId);
+                error = updateError;
+            } else {
+                // Insert new
+                const { error: insertError } = await supabase
+                    .from('transactions')
+                    .insert(transactionData);
+                error = insertError;
+            }
 
             if (error) throw error;
+
             setIsAddOpen(false);
+            setEditingId(null);
             setNewTrans({
                 amount: '',
                 category: 'Groceries',
@@ -277,10 +308,16 @@ const Wallet: React.FC = () => {
                                         <td className={`px-6 py-4 text-right font-bold ${t.type === 'income' ? 'text-green-500' : ''}`}>
                                             {t.type === 'income' ? '+' : '-'}${t.amount.toFixed(2)}
                                         </td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="px-6 py-4 text-right flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => handleEdit(t)}
+                                                className="text-slate-400 hover:text-primary p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                                            >
+                                                <Pencil size={16} />
+                                            </button>
                                             <button
                                                 onClick={() => handleDelete(t.id)}
-                                                className="text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                                                className="text-slate-400 hover:text-red-500 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                                             >
                                                 <Trash2 size={16} />
                                             </button>
@@ -310,9 +347,14 @@ const Wallet: React.FC = () => {
                                         <p className={`text-sm font-bold ${t.type === 'income' ? 'text-green-500' : ''}`}>
                                             {t.type === 'income' ? '+' : '-'}${t.amount.toFixed(2)}
                                         </p>
-                                        <button onClick={() => handleDelete(t.id)} className="text-red-300 transition-colors">
-                                            <Trash2 size={14} />
-                                        </button>
+                                        <div className="flex items-center justify-end gap-2 mt-1">
+                                            <button onClick={() => handleEdit(t)} className="text-slate-300 hover:text-primary transition-colors p-1">
+                                                <Pencil size={14} />
+                                            </button>
+                                            <button onClick={() => handleDelete(t.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1">
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             );
@@ -324,7 +366,17 @@ const Wallet: React.FC = () => {
             {/* Floating Action Button */}
             <div className="fixed bottom-28 right-6 z-30 lg:right-12">
                 <button
-                    onClick={() => setIsAddOpen(true)}
+                    onClick={() => {
+                        setEditingId(null);
+                        setNewTrans({
+                            amount: '',
+                            category: 'Groceries',
+                            note: '',
+                            date: new Date().toISOString().split('T')[0],
+                            type: 'expense'
+                        });
+                        setIsAddOpen(true);
+                    }}
                     className="size-16 rounded-full bg-primary text-white shadow-xl shadow-primary/40 flex items-center justify-center transition-transform active:scale-90 lg:size-20"
                 >
                     <Plus size={32} />
@@ -336,12 +388,12 @@ const Wallet: React.FC = () => {
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2.5rem] overflow-hidden flex flex-col shadow-2xl">
                         <header className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                            <h2 className="text-xl font-black">Add Transaction</h2>
+                            <h2 className="text-xl font-black">{editingId ? 'Edit Transaction' : 'Add Transaction'}</h2>
                             <button onClick={() => setIsAddOpen(false)} className="text-slate-400 hover:text-slate-600">
                                 <XCircle size={24} />
                             </button>
                         </header>
-                        <form onSubmit={handleAdd} className="p-8 space-y-6">
+                        <form onSubmit={handleSaveTransaction} className="p-8 space-y-6">
                             <div className="flex gap-2 p-1.5 bg-slate-50 dark:bg-slate-800 rounded-2xl">
                                 {(['expense', 'income'] as const).map(t => (
                                     <button
@@ -401,8 +453,8 @@ const Wallet: React.FC = () => {
                                 disabled={saving}
                                 className="w-full py-4 bg-primary text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-primary/30 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                             >
-                                {saving ? <Loader2 className="animate-spin" /> : <Plus size={20} />}
-                                Save Transaction
+                                {saving ? <Loader2 className="animate-spin" /> : (editingId ? <Save size={20} /> : <Plus size={20} />)}
+                                {editingId ? 'Save Changes' : 'Save Transaction'}
                             </button>
                         </form>
                     </div>

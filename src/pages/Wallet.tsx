@@ -1,55 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, ShoppingCart, Bolt, Film, Plus, ScanLine, ChevronDown, Trash2, Loader2, Utensils, Heart, Home, Package, MoreHorizontal, XCircle, Pencil, Save, TrendingUp } from 'lucide-react';
-// ... (keep existing imports)
-
-// ...
-
-const categoriesBreakdown = Object.keys(categoryIcons).map(cat => {
-    const spent = transactions
-        .filter(t => t.category === cat && t.type === 'expense')
-        .reduce((acc, curr) => acc + curr.amount, 0);
-    return {
-        label: cat,
-        amount: spent,
-        percentage: totalSpent > 0 ? (spent / totalSpent) * 100 : 0,
-        icon: categoryIcons[cat]
-    };
-}).filter(c => c.amount > 0).sort((a, b) => b.amount - a.amount);
-
-const incomeBreakdown = transactions
-    .filter(t => t.type === 'income')
-    .reduce((acc, curr) => {
-        const cat = curr.category || 'Other';
-        if (!acc[cat]) {
-            acc[cat] = {
-                label: cat,
-                amount: 0,
-                icon: categoryIcons[cat] || TrendingUp
-            };
-        }
-        acc[cat].amount += curr.amount;
-        return acc;
-    }, {} as Record<string, any>);
-
-const incomeBreakdownList = Object.values(incomeBreakdown).map((item: any) => ({
-    ...item,
-    percentage: totalIncome > 0 ? (item.amount / totalIncome) * 100 : 0
-})).sort((a: any, b: any) => b.amount - a.amount);
-
+import { ArrowLeft, Calendar, ChevronDown, Trash2, Loader2, Plus, ScanLine, XCircle, Pencil, Save, TrendingUp } from 'lucide-react';
+import { FaShoppingCart, FaUtensils, FaBolt, FaFilm, FaHeartbeat, FaHome, FaChild, FaEllipsisH, FaMoneyBillWave } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Transaction, Profile } from '../types';
 import { format } from 'date-fns';
 
 const categoryIcons: Record<string, any> = {
-    'Groceries': ShoppingCart,
-    'Dining Out': Utensils,
-    'Utilities': Bolt,
-    'Entertainment': Film,
-    'Health': Heart,
-    'Transport': Home,
-    'Kids': Package,
-    'Other': MoreHorizontal
+    'Groceries': FaShoppingCart,
+    'Dining Out': FaUtensils,
+    'Utilities': FaBolt,
+    'Entertainment': FaFilm,
+    'Health': FaHeartbeat,
+    'Transport': FaHome,
+    'Kids': FaChild,
+    'Other': FaEllipsisH,
+    'Income': FaMoneyBillWave
 };
 
 const Wallet: React.FC = () => {
@@ -69,6 +35,39 @@ const Wallet: React.FC = () => {
     });
     const [editingId, setEditingId] = useState<string | number | null>(null);
     const [saving, setSaving] = useState(false);
+
+    // Filter and calculate breakdown inside the component where 'transactions' is available
+    const categoriesBreakdown = Object.keys(categoryIcons).map(cat => {
+        const spent = transactions
+            .filter(t => t.category === cat && t.type === 'expense')
+            .reduce((acc, curr) => acc + curr.amount, 0);
+        return {
+            label: cat,
+            amount: spent,
+            percentage: totalSpent > 0 ? (spent / totalSpent) * 100 : 0,
+            icon: categoryIcons[cat]
+        };
+    }).filter(c => c.amount > 0).sort((a, b) => b.amount - a.amount);
+
+    const incomeBreakdown = transactions
+        .filter(t => t.type === 'income')
+        .reduce((acc, curr) => {
+            const cat = curr.category || 'Other';
+            if (!acc[cat]) {
+                acc[cat] = {
+                    label: cat,
+                    amount: 0,
+                    icon: categoryIcons[cat] || FaMoneyBillWave
+                };
+            }
+            acc[cat].amount += curr.amount;
+            return acc;
+        }, {} as Record<string, any>);
+
+    const incomeBreakdownList = Object.values(incomeBreakdown).map((item: any) => ({
+        ...item,
+        percentage: totalIncome > 0 ? (item.amount / totalIncome) * 100 : 0
+    })).sort((a: any, b: any) => b.amount - a.amount);
 
     useEffect(() => {
         fetchData();
@@ -218,18 +217,6 @@ const Wallet: React.FC = () => {
         }
     };
 
-    const categoriesBreakdown = Object.keys(categoryIcons).map(cat => {
-        const spent = transactions
-            .filter(t => t.category === cat && t.type === 'expense')
-            .reduce((acc, curr) => acc + curr.amount, 0);
-        return {
-            label: cat,
-            amount: spent,
-            percentage: totalSpent > 0 ? (spent / totalSpent) * 100 : 0,
-            icon: categoryIcons[cat]
-        };
-    }).filter(c => c.amount > 0).sort((a, b) => b.amount - a.amount);
-
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
@@ -260,8 +247,8 @@ const Wallet: React.FC = () => {
 
                     <div className="relative z-10 flex flex-col items-center text-center">
                         <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Remaining Balance</span>
-                        <h1 className={`text-5xl font-black tracking-tighter mb-8 ${totalIncome + totalSpent >= 0 ? 'text-slate-900 dark:text-white' : 'text-red-500'}`}>
-                            ${(totalIncome + totalSpent).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        <h1 className={`text-5xl font-black tracking-tighter mb-8 ${totalIncome - totalSpent >= 0 ? 'text-slate-900 dark:text-white' : 'text-red-500'}`}>
+                            ${(totalIncome - totalSpent).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </h1>
 
                         {/* Circular Progress Chart */}
@@ -316,7 +303,6 @@ const Wallet: React.FC = () => {
             </header>
 
             <main className="max-w-4xl mx-auto space-y-8 px-6">
-                {/* Category Donut & Legend (Tablet/Desktop friendly) */}
                 {/* Category Breakdown */}
                 <section className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-800">
                     <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-6">Category Analysis</h2>
@@ -357,7 +343,7 @@ const Wallet: React.FC = () => {
                         {/* Expense Categories */}
                         <div className="space-y-4">
                             <h3 className="text-xs font-bold text-red-500 uppercase tracking-wider flex items-center gap-2">
-                                <ShoppingCart size={16} /> Expense Breakdown
+                                <FaShoppingCart size={16} /> Expense Breakdown
                             </h3>
                             <div className="grid grid-cols-2 gap-3">
                                 {categoriesBreakdown.map((cat, idx) => (

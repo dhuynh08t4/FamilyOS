@@ -7,6 +7,7 @@ A comprehensive tool for planning and tracking monthly budgets against actual sp
 - **Plan Management**: Create, Edit, and Delete budget plans.
 - **Transaction Linking**: Link existing transactions to a budget plan or create new ones directly within the plan.
 - **Visual Progress**: Progress bars showing "Planned vs. Actual" spending with percentage indicators.
+- **AI FinAssistant**: Conversational interface to create plans or log expenses instantly using natural language.
 - **Unlinking/Removal**: Remove transactions from a plan (unlink) or delete them permanently from the system.
 - **Date Picker**: Specific date selection when adding new transactions.
 

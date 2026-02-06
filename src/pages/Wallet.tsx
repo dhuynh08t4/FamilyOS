@@ -108,8 +108,12 @@ const Wallet: React.FC = () => {
             })
             .subscribe();
 
+        const handleRefresh = () => fetchData();
+        window.addEventListener('family-os-refresh', handleRefresh);
+
         return () => {
             supabase.removeChannel(channel);
+            window.removeEventListener('family-os-refresh', handleRefresh);
         };
     }, [currentDate]);
 

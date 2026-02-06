@@ -80,8 +80,12 @@ const BudgetPlanning: React.FC = () => {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchData())
             .subscribe();
 
+        const handleRefresh = () => fetchData();
+        window.addEventListener('family-os-refresh', handleRefresh);
+
         return () => {
             supabase.removeChannel(channel);
+            window.removeEventListener('family-os-refresh', handleRefresh);
         };
     }, []);
 
@@ -1130,7 +1134,7 @@ const BudgetPlanning: React.FC = () => {
                     </div>
                 </div>
             )}
-        </div >
+        </div>
     );
 };
 

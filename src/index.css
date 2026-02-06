@@ -40,3 +40,21 @@ body {
 .glass {
   @apply bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 dark:border-primary/5 shadow-xl;
 }
+
+@keyframes bounce-subtle {
+
+  0%,
+  100% {
+    transform: translateY(-8px);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+
+  50% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 2s infinite;
+}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaPaperPlane, FaImage, FaPlus, FaSearch, FaSpinner, FaUser, FaVideo, FaInfoCircle, FaTrash, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { FaPaperPlane, FaImage, FaPlus, FaSearch, FaSpinner, FaUser, FaVideo, FaInfoCircle, FaTrash, FaTimes, FaChevronLeft, FaChevronRight, FaRobot, FaMagic, FaLaughSquint, FaStickyNote, FaChartPie, FaWallet, FaListUl, FaFire, FaHistory } from 'react-icons/fa';
 import { supabase } from '../lib/supabase';
 import type { Message, Profile } from '../types';
 import { format } from 'date-fns';
@@ -7,6 +8,7 @@ import { vi } from 'date-fns/locale';
 import imageCompression from 'browser-image-compression';
 import { useDialog } from '../components/ui/DialogProvider';
 import { useToast } from '../components/ui/ToastProvider';
+import { processAIRequest, executeAIAction } from '../lib/ai-agent';
 
 const Chat: React.FC = () => {
     const { confirm } = useDialog();
@@ -21,6 +23,9 @@ const Chat: React.FC = () => {
     const [memberSearch, setMemberSearch] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [currentRoom, setCurrentRoom] = useState<'group' | 'ai'>(searchParams.get('mode') === 'ai' ? 'ai' : 'group');
+    const [aiMessages, setAiMessages] = useState<{ role: 'user' | 'ai'; content: string; created_at: string }[]>([]);
 
     const isAdmin = currentUser && profiles[currentUser]?.role === 'admin';
     const imageMessages = messages.filter(m => m.type === 'image' && m.image_url);
@@ -103,6 +108,32 @@ const Chat: React.FC = () => {
         const textToSubmit = inputText.trim();
         setInputText('');
 
+        if (currentRoom === 'ai') {
+            const now = new Date().toISOString();
+            setAiMessages(prev => [...prev, { role: 'user', content: textToSubmit, created_at: now }]);
+            setSending(true);
+            try {
+                const response = await processAIRequest(textToSubmit, currentUser!);
+                const aiNow = new Date().toISOString();
+                setAiMessages(prev => [...prev, { role: 'ai', content: response.message, created_at: aiNow }]);
+
+                if (response.action) {
+                    const actionResult = await executeAIAction(response.action, currentUser);
+                    if (actionResult.error) {
+                        showToast(actionResult.error.message, 'error');
+                    } else {
+                        showToast("Trợ lý đã thực hiện yêu cầu!", 'success');
+                        window.dispatchEvent(new CustomEvent('family-os-refresh'));
+                    }
+                }
+            } catch (error) {
+                console.error('AI Chat Error:', error);
+            } finally {
+                setSending(false);
+            }
+            return;
+        }
+
         try {
             const { error } = await supabase.from('messages').insert({
                 user_id: currentUser,
@@ -112,6 +143,33 @@ const Chat: React.FC = () => {
             if (error) throw error;
         } catch (error) {
             console.error('Lỗi gửi tin:', error);
+        }
+    };
+
+    const handleQuickAction = (action: { label: string, type: 'direct' | 'input' }) => {
+        if (action.type === 'direct') {
+            const now = new Date().toISOString();
+            setAiMessages(prev => [...prev, { role: 'user', content: action.label, created_at: now }]);
+            setSending(true);
+            processAIRequest(action.label, currentUser!).then(async response => {
+                const aiNow = new Date().toISOString();
+                setAiMessages(prev => [...prev, { role: 'ai', content: response.message, created_at: aiNow }]);
+                if (response.action) {
+                    const actionResult = await executeAIAction(response.action, currentUser!);
+                    if (actionResult.error) {
+                        showToast(actionResult.error.message, 'error');
+                    } else {
+                        showToast("Trợ lý đã thực hiện yêu cầu!", 'success');
+                        window.dispatchEvent(new CustomEvent('family-os-refresh'));
+                    }
+                }
+            }).catch(error => {
+                console.error('AI Quick Action Error:', error);
+            }).finally(() => {
+                setSending(false);
+            });
+        } else {
+            setInputText(action.label + ' ');
         }
     };
 
@@ -266,19 +324,19 @@ const Chat: React.FC = () => {
             {/* Header */}
             <header className="px-4 py-3 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md">
                 <div className="flex items-center gap-3">
-                    <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                        <FaUser size={20} />
+                    <div className={`size-10 rounded-full flex items-center justify-center font-bold ${currentRoom === 'ai' ? 'bg-slate-900 text-primary shadow-lg' : 'bg-primary/10 text-primary'}`}>
+                        {currentRoom === 'ai' ? <FaRobot size={20} /> : <FaUser size={20} />}
                     </div>
                     <div>
-                        <h1 className="text-sm font-bold">Gia đình</h1>
-                        <p className="text-[10px] text-green-500 font-bold flex items-center gap-1">
-                            <span className="size-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                            {Object.keys(profiles).length} thành viên
+                        <h1 className="text-sm font-bold">{currentRoom === 'ai' ? 'Family Assistant' : 'Gia đình'}</h1>
+                        <p className={`text-[10px] font-bold flex items-center gap-1 ${currentRoom === 'ai' ? 'text-primary animate-pulse' : 'text-green-500'}`}>
+                            <span className={`size-1.5 rounded-full ${currentRoom === 'ai' ? 'bg-primary' : 'bg-green-500'} animate-pulse`}></span>
+                            {currentRoom === 'ai' ? 'Trực tuyến' : `${Object.keys(profiles).length} thành viên`}
                         </p>
                     </div>
                 </div>
                 <div className="flex gap-1">
-                    {isAdmin && (
+                    {currentRoom === 'group' && isAdmin && (
                         <button
                             onClick={handleClearChat}
                             className="size-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-red-500"
@@ -287,12 +345,27 @@ const Chat: React.FC = () => {
                             <FaTrash size={16} />
                         </button>
                     )}
-                    <button onClick={handleVideoCall} className="size-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                        <FaVideo size={20} className="text-slate-500" />
-                    </button>
-                    <button onClick={handleInfo} className="size-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                        <FaInfoCircle size={20} className="text-slate-500" />
-                    </button>
+                    {currentRoom === 'group' && (
+                        <>
+                            <button onClick={handleVideoCall} className="size-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                <FaVideo size={20} className="text-slate-500" />
+                            </button>
+                            <button onClick={handleInfo} className="size-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                <FaInfoCircle size={20} className="text-slate-500" />
+                            </button>
+                        </>
+                    )}
+                    {currentRoom === 'ai' && (
+                        <button
+                            onClick={() => {
+                                setAiMessages([{ role: 'ai', content: 'Chào bạn! Tôi có thể giúp gì cho gia đình mình hôm nay?', created_at: new Date().toISOString() }]);
+                            }}
+                            className="size-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500"
+                            title="Làm mới hội thoại"
+                        >
+                            <FaSpinner size={16} className={sending ? 'animate-spin' : ''} />
+                        </button>
+                    )}
                 </div>
             </header>
 
@@ -312,11 +385,33 @@ const Chat: React.FC = () => {
                         </div>
                     </div>
                     <div className="flex-1 overflow-y-auto space-y-1 px-2 pb-4">
-                        <div className="bg-primary/10 border-l-4 border-primary p-3 rounded-r-xl flex items-center gap-3 cursor-pointer">
+                        <div
+                            onClick={() => {
+                                setCurrentRoom('group');
+                                setSearchParams({});
+                            }}
+                            className={`p-3 rounded-xl flex items-center gap-3 cursor-pointer transition-all ${currentRoom === 'group' ? 'bg-primary/10 border-l-4 border-primary' : 'hover:bg-white dark:hover:bg-slate-800 opacity-70'}`}
+                        >
                             <div className="size-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">#</div>
                             <div>
                                 <p className="text-sm font-bold">Nhóm chung</p>
                                 <p className="text-[10px] text-slate-500 truncate">Kênh trò chuyện gia đình</p>
+                            </div>
+                        </div>
+
+                        <div
+                            onClick={() => {
+                                setCurrentRoom('ai');
+                                setSearchParams({ mode: 'ai' });
+                            }}
+                            className={`p-3 rounded-xl flex items-center gap-3 cursor-pointer transition-all ${currentRoom === 'ai' ? 'bg-primary/10 border-l-4 border-primary' : 'hover:bg-white dark:hover:bg-slate-800 opacity-70'}`}
+                        >
+                            <div className="size-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold shadow-lg">
+                                <FaRobot size={20} className="text-primary animate-pulse" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold">FamilyOS Assistant</p>
+                                <p className="text-[10px] text-primary font-black uppercase tracking-widest animate-pulse">Trực tuyến</p>
                             </div>
                         </div>
 
@@ -344,73 +439,123 @@ const Chat: React.FC = () => {
                 {/* Messages Container */}
                 <main className="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-background-dark/50">
                     <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
-                        {messages.map((msg, idx) => {
-                            const isMe = msg.user_id === currentUser;
-                            const profile = profiles[msg.user_id];
-                            const showAvatar = idx === 0 || messages[idx - 1].user_id !== msg.user_id;
+                        {currentRoom === 'group' ? (
+                            messages.map((msg, idx) => {
+                                const isMe = msg.user_id === currentUser;
+                                const profile = profiles[msg.user_id];
+                                const showAvatar = idx === 0 || messages[idx - 1].user_id !== msg.user_id;
 
-                            return (
-                                <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} items-end gap-2 group`}>
-                                    {!isMe && showAvatar && (
-                                        <div className="size-8 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0 flex items-center justify-center text-[10px] font-bold overflow-hidden">
-                                            {profile?.avatar_url ? (
-                                                <img src={profile.avatar_url} alt={profile.nice_name || ''} className="size-full object-cover" />
-                                            ) : (
-                                                (profile?.nice_name?.[0] || profile?.full_name?.[0] || '?').toUpperCase()
-                                            )}
-                                        </div>
-                                    )}
-                                    {!isMe && !showAvatar && <div className="w-8 flex-shrink-0"></div>}
-
-                                    <div className={`max-w-[75%] space-y-1 relative`}>
+                                return (
+                                    <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} items-end gap-2 group`}>
                                         {!isMe && showAvatar && (
-                                            <p className="text-[10px] font-bold text-slate-400 ml-1 mb-1">
-                                                {profile?.nice_name || 'Thành viên'}
-                                            </p>
+                                            <div className="size-8 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0 flex items-center justify-center text-[10px] font-bold overflow-hidden">
+                                                {profile?.avatar_url ? (
+                                                    <img src={profile.avatar_url} alt={profile.nice_name || ''} className="size-full object-cover" />
+                                                ) : (
+                                                    (profile?.nice_name?.[0] || profile?.full_name?.[0] || '?').toUpperCase()
+                                                )}
+                                            </div>
                                         )}
-                                        <div className={`
-                                            px-4 py-3 rounded-2xl text-sm font-medium shadow-sm transition-all
-                                            ${isMe
-                                                ? 'bg-primary text-white rounded-br-none'
-                                                : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-bl-none border border-slate-100 dark:border-slate-700'}
-                                        `}>
-                                            {msg.type === 'image' && msg.image_url ? (
-                                                <div className="space-y-2">
-                                                    <img
-                                                        src={msg.image_url}
-                                                        alt="Shared"
-                                                        className="rounded-lg max-w-[256px] max-h-[256px] object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                                                        onClick={() => openLightbox(msg.id)}
-                                                    />
-                                                    {msg.content !== 'Đã chia sẻ một ảnh' && <p>{msg.content}</p>}
-                                                </div>
-                                            ) : (
-                                                <p>{msg.content}</p>
-                                            )}
-                                            <p className={`text-[8px] mt-1 text-right ${isMe ? 'text-white/70' : 'text-slate-400'}`}>
-                                                {format(new Date(msg.created_at), 'HH:mm', { locale: vi })}
-                                            </p>
-                                        </div>
+                                        {!isMe && !showAvatar && <div className="w-8 flex-shrink-0"></div>}
 
-                                        {/* Admin Delete Button */}
-                                        {isAdmin && (
-                                            <button
-                                                onClick={() => handleDeleteMessage(msg)}
-                                                className={`absolute top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ${isMe ? '-left-8' : '-right-8'}`}
-                                                title="Xóa tin nhắn"
-                                            >
-                                                <FaTrash size={12} />
-                                            </button>
-                                        )}
+                                        <div className={`max-w-[75%] space-y-1 relative`}>
+                                            {!isMe && showAvatar && (
+                                                <p className="text-[10px] font-bold text-slate-400 ml-1 mb-1">
+                                                    {profile?.nice_name || 'Thành viên'}
+                                                </p>
+                                            )}
+                                            <div className={`
+                                                px-4 py-3 rounded-2xl text-sm font-medium shadow-sm transition-all
+                                                ${isMe
+                                                    ? 'bg-primary text-white rounded-br-none'
+                                                    : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-bl-none border border-slate-100 dark:border-slate-700'}
+                                            `}>
+                                                {msg.type === 'image' && msg.image_url ? (
+                                                    <div className="space-y-2">
+                                                        <img
+                                                            src={msg.image_url}
+                                                            alt="Shared"
+                                                            className="rounded-lg max-w-[256px] max-h-[256px] object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                                            onClick={() => openLightbox(msg.id)}
+                                                        />
+                                                        {msg.content !== 'Đã chia sẻ một ảnh' && <p>{msg.content}</p>}
+                                                    </div>
+                                                ) : (
+                                                    <p>{msg.content}</p>
+                                                )}
+                                                <p className={`text-[8px] mt-1 text-right ${isMe ? 'text-white/70' : 'text-slate-400'}`}>
+                                                    {format(new Date(msg.created_at), 'HH:mm', { locale: vi })}
+                                                </p>
+                                            </div>
+
+                                            {/* Admin Delete Button */}
+                                            {isAdmin && (
+                                                <button
+                                                    onClick={() => handleDeleteMessage(msg)}
+                                                    className={`absolute top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ${isMe ? '-left-8' : '-right-8'}`}
+                                                    title="Xóa tin nhắn"
+                                                >
+                                                    <FaTrash size={12} />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            })
+                        ) : (
+                            aiMessages.map((msg, idx) => {
+                                const isMe = msg.role === 'user';
+                                return (
+                                    <div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'} items-end gap-2 group`}>
+                                        {!isMe && (
+                                            <div className="size-8 rounded-full bg-slate-900 text-primary flex-shrink-0 flex items-center justify-center text-[10px] font-bold overflow-hidden shadow-lg border border-primary/20">
+                                                <FaRobot size={18} />
+                                            </div>
+                                        )}
+                                        <div className={`max-w-[75%] space-y-1 relative`}>
+                                            <div className={`
+                                                px-4 py-3 rounded-2xl text-sm font-medium shadow-sm transition-all
+                                                ${isMe
+                                                    ? 'bg-primary text-white rounded-br-none'
+                                                    : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-bl-none border border-slate-100 dark:border-slate-700'}
+                                            `}>
+                                                <p className="whitespace-pre-wrap">{msg.content}</p>
+                                                <p className={`text-[8px] mt-1 text-right ${isMe ? 'text-white/70' : 'text-slate-400'}`}>
+                                                    {format(new Date(msg.created_at), 'HH:mm', { locale: vi })}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
                         <div ref={messagesEndRef} />
                     </div>
 
                     {/* Input Area */}
-                    <footer className="px-4 py-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
+                    <footer className="px-4 py-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 space-y-4">
+                        {currentRoom === 'ai' && (
+                            <div className="flex items-center gap-4 overflow-x-auto pb-2 no-scrollbar">
+                                {[
+                                    { icon: FaLaughSquint, label: "Kể 1 câu chuyện cười", type: 'direct', title: "Kể chuyện cười" },
+                                    { icon: FaStickyNote, label: "Thêm ghi chú:", type: 'input', title: "Thêm ghi chú" },
+                                    { icon: FaChartPie, label: "Thêm khoản cần chi:", type: 'input', title: "Dự chi mới" },
+                                    { icon: FaWallet, label: "Thêm khoản đã chi:", type: 'input', title: "Chi tiêu mới" },
+                                    { icon: FaListUl, label: "Tóm tắt dự chi tháng này", type: 'direct', title: "Tóm tắt dự chi" },
+                                    { icon: FaHistory, label: "10 ghi chú gần nhất", type: 'direct', title: "10 ghi chú gần nhất" },
+                                    { icon: FaFire, label: "5 khoản chi nhiều nhất tháng này", type: 'direct', title: "5 khoản chi lớn nhất" },
+                                ].map((action, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => handleQuickAction(action as any)}
+                                        title={action.title}
+                                        className="flex-shrink-0 size-11 flex items-center justify-center bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl hover:border-primary hover:text-primary transition-all shadow-sm active:scale-90"
+                                    >
+                                        <action.icon size={24} className="text-primary" />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                         <form onSubmit={handleSendMessage} className="flex items-center gap-3">
                             <button
                                 type="button"

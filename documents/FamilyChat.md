@@ -12,6 +12,7 @@ A real-time messaging platform for family coordination. It supports text message
 - **Responsive Layout**: Sidebar for Desktop displaying the group and member list, full-screen for Mobile.
 - **Member Directory**: Integrated sidebar showing all family members with their avatars and roles.
 - **Member Search**: Real-time searching/filtering of family members in the sidebar.
+- **AI Assistant Integration**: Dedicated channel to interact with the Family AI for quick tasks and queries.
 
 ## Technical Details
 - **Subscription**: Dedicated channel `family_chat` for real-time insert events.

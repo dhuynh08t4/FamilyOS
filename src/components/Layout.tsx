@@ -7,6 +7,7 @@ import {
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types';
 import { ThemeSelector } from './ThemeSelector';
+import AIChatBubble from './AIChatBubble';
 
 const Layout: React.FC = () => {
     const navigate = useNavigate();
@@ -345,6 +346,7 @@ const Layout: React.FC = () => {
                     </div>
                 </nav>
             </div>
+            <AIChatBubble />
         </div>
     );
 };

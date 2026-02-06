@@ -3,7 +3,7 @@ import { FaChevronLeft, FaSearchPlus, FaSync, FaCheck, FaSpinner, FaMagic, FaUpl
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { generateSmartContent, GEMINI_MODELS } from '../lib/gemini';
-
+import { useToast } from '../components/ui/ToastProvider';
 
 interface ScannedItem {
     id: string;
@@ -15,6 +15,7 @@ interface ScannedItem {
 
 const AIScanner: React.FC = () => {
     const navigate = useNavigate();
+    const { showToast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // UI State
@@ -101,8 +102,10 @@ const AIScanner: React.FC = () => {
                     }));
 
                     setScannedItems(mappedItems);
+                    showToast(`Đã tìm thấy ${mappedItems.length} mục`, 'success');
                 } catch (e) {
                     console.error('Failed to parse AI response:', response);
+                    showToast('Không thể đọc dữ liệu từ AI', 'error');
                 }
 
                 setProgress(100);
@@ -110,7 +113,7 @@ const AIScanner: React.FC = () => {
             };
         } catch (error: any) {
             console.error('AI Error:', error);
-            alert(error.message || 'AI processing failed');
+            showToast(error.message || 'AI processing failed', 'error');
             setIsProcessing(false);
         }
     };
@@ -152,10 +155,11 @@ const AIScanner: React.FC = () => {
 
             if (dbError) throw dbError;
 
+            showToast('Đã lưu tất cả hóa đơn', 'success');
             navigate('/wallet');
         } catch (error: any) {
             console.error('Save error:', error);
-            alert(error.message || 'Failed to save transaction');
+            showToast(error.message || 'Failed to save transaction', 'error');
         } finally {
             setIsSaving(false);
         }

@@ -4,8 +4,10 @@ import { supabase } from '../lib/supabase';
 import type { Note } from '../types';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { useDialog } from '../components/ui/DialogProvider';
 
 const Notes: React.FC = () => {
+    const { confirm } = useDialog();
     const [notes, setNotes] = useState<Note[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -47,7 +49,14 @@ const Notes: React.FC = () => {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Xóa ghi chú này?')) return;
+        const confirmed = await confirm({
+            title: 'Xóa ghi chú',
+            message: 'Bạn có chắc chắn muốn xóa ghi chú này không?',
+            confirmText: 'Xóa',
+            cancelText: 'Hủy',
+            type: 'danger'
+        });
+        if (!confirmed) return;
         await supabase.from('notes').delete().eq('id', id);
         setIsEditing(null);
     };

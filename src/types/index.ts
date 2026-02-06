@@ -20,6 +20,19 @@ export interface Transaction {
   image_url: string | null;
   date: string;
   type: 'income' | 'expense';
+  budget_plan_id?: string | null;
+  created_at: string;
+}
+
+export interface BudgetPlan {
+  id: string;
+  user_id: string;
+  name: string;
+  planned_amount: number;
+  category?: string;
+  start_date: string | null;
+  end_date: string | null;
+  status: 'active' | 'completed' | 'archived';
   created_at: string;
 }
 

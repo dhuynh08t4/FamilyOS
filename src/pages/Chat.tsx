@@ -1,20 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaPaperPlane, FaImage, FaPlus, FaSearch, FaSpinner, FaUser, FaVideo, FaInfoCircle } from 'react-icons/fa';
+import { FaPaperPlane, FaImage, FaPlus, FaSearch, FaSpinner, FaUser, FaVideo, FaInfoCircle, FaTrash, FaTimes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { supabase } from '../lib/supabase';
 import type { Message, Profile } from '../types';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import imageCompression from 'browser-image-compression';
+import { useDialog } from '../components/ui/DialogProvider';
 
 const Chat: React.FC = () => {
+    const { confirm } = useDialog();
     const [messages, setMessages] = useState<Message[]>([]);
     const [profiles, setProfiles] = useState<Record<string, Profile>>({});
     const [currentUser, setCurrentUser] = useState<string | null>(null);
     const [inputText, setInputText] = useState('');
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
+    const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const isAdmin = currentUser && profiles[currentUser]?.role === 'admin';
+    const imageMessages = messages.filter(m => m.type === 'image' && m.image_url);
 
     useEffect(() => {
         fetchInitialData();
@@ -27,6 +33,10 @@ const Chat: React.FC = () => {
                 setMessages(prev => [...prev, newMessage]);
                 scrollToBottom();
             })
+            // Also listen for DELETEs to update UI in real-time if another admin deletes
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, (payload) => {
+                setMessages(prev => prev.filter(m => m.id !== payload.old.id));
+            })
             .subscribe();
 
         return () => {
@@ -37,6 +47,18 @@ const Chat: React.FC = () => {
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    // Keyboard navigation for lightbox
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (lightboxIndex === null) return;
+            if (e.key === 'Escape') setLightboxIndex(null);
+            if (e.key === 'ArrowRight') nextImage();
+            if (e.key === 'ArrowLeft') prevImage();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [lightboxIndex, imageMessages]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -122,6 +144,104 @@ const Chat: React.FC = () => {
         }
     };
 
+    const handleDeleteMessage = async (msg: Message) => {
+        const confirmed = await confirm({
+            title: 'Xóa tin nhắn',
+            message: 'Bạn có chắc chắn muốn xóa tin nhắn này không?',
+            confirmText: 'Xóa',
+            cancelText: 'Hủy',
+            type: 'danger'
+        });
+        if (!confirmed) return;
+
+        try {
+            // Delete image if exists
+            if (msg.type === 'image' && msg.image_url) {
+                // Determine path from public URL
+                // URL: .../family-os/chat/user/file
+                const parts = msg.image_url.split('/family-os/');
+                if (parts.length > 1) {
+                    const path = parts[1];
+                    await supabase.storage.from('family-os').remove([path]);
+                }
+            }
+
+            const { error } = await supabase.from('messages').delete().eq('id', msg.id);
+            if (error) throw error;
+
+            // UI update handled by subscription
+        } catch (error) {
+            console.error('Lỗi xóa tin nhắn:', error);
+        }
+    };
+
+    const handleClearChat = async () => {
+        const confirmed = await confirm({
+            title: 'Xóa toàn bộ đoạn chat',
+            message: 'Hành động này sẽ xóa vĩnh viễn tất cả tin nhắn và hình ảnh. Bạn có chắc chắn không?',
+            confirmText: 'Xóa tất cả',
+            cancelText: 'Hủy',
+            type: 'danger'
+        });
+        if (!confirmed) return;
+
+        try {
+            setLoading(true);
+
+            // 1. Delete all images
+            // Fetch all messages with images first to get paths
+            const { data: imageMessages } = await supabase
+                .from('messages')
+                .select('image_url')
+                .eq('type', 'image')
+                .not('image_url', 'is', null);
+
+            if (imageMessages && imageMessages.length > 0) {
+                const paths = imageMessages
+                    .map(m => {
+                        const parts = m.image_url?.split('/family-os/');
+                        return parts && parts.length > 1 ? parts[1] : null;
+                    })
+                    .filter(p => p) as string[];
+
+                if (paths.length > 0) {
+                    // Delete in batches if needed, but for now direct
+                    await supabase.storage.from('family-os').remove(paths);
+                }
+            }
+
+            // 2. Delete all messages
+            // Using a condition that is always true to delete all rows
+            const { error } = await supabase.from('messages').delete().gt('id', 0);
+            if (error) throw error;
+
+            setMessages([]);
+        } catch (error) {
+            console.error('Lỗi xóa đoạn chat:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const openLightbox = (msgId: string) => {
+        const index = imageMessages.findIndex(m => m.id === msgId);
+        if (index !== -1) setLightboxIndex(index);
+    };
+
+    const nextImage = (e?: React.MouseEvent) => {
+        e?.stopPropagation();
+        if (lightboxIndex !== null && lightboxIndex < imageMessages.length - 1) {
+            setLightboxIndex(lightboxIndex + 1);
+        }
+    };
+
+    const prevImage = (e?: React.MouseEvent) => {
+        e?.stopPropagation();
+        if (lightboxIndex !== null && lightboxIndex > 0) {
+            setLightboxIndex(lightboxIndex - 1);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
@@ -147,6 +267,15 @@ const Chat: React.FC = () => {
                     </div>
                 </div>
                 <div className="flex gap-1">
+                    {isAdmin && (
+                        <button
+                            onClick={handleClearChat}
+                            className="size-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-red-500"
+                            title="Xóa đoạn chat"
+                        >
+                            <FaTrash size={16} />
+                        </button>
+                    )}
                     <button className="size-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                         <FaVideo size={20} className="text-slate-500" />
                     </button>
@@ -186,7 +315,7 @@ const Chat: React.FC = () => {
                             const showAvatar = idx === 0 || messages[idx - 1].user_id !== msg.user_id;
 
                             return (
-                                <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} items-end gap-2`}>
+                                <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} items-end gap-2 group`}>
                                     {!isMe && showAvatar && (
                                         <div className="size-8 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0 flex items-center justify-center text-[10px] font-bold">
                                             {profile?.full_name?.[0] || '?'}
@@ -194,7 +323,7 @@ const Chat: React.FC = () => {
                                     )}
                                     {!isMe && !showAvatar && <div className="w-8 flex-shrink-0"></div>}
 
-                                    <div className={`max-w-[75%] space-y-1`}>
+                                    <div className={`max-w-[75%] space-y-1 relative`}>
                                         {!isMe && showAvatar && (
                                             <p className="text-[10px] font-bold text-slate-400 ml-1 mb-1">
                                                 {profile?.nice_name || 'Thành viên'}
@@ -208,7 +337,12 @@ const Chat: React.FC = () => {
                                         `}>
                                             {msg.type === 'image' && msg.image_url ? (
                                                 <div className="space-y-2">
-                                                    <img src={msg.image_url} alt="Shared" className="rounded-lg max-w-full" />
+                                                    <img
+                                                        src={msg.image_url}
+                                                        alt="Shared"
+                                                        className="rounded-lg max-w-[256px] max-h-[256px] object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                                        onClick={() => openLightbox(msg.id)}
+                                                    />
                                                     {msg.content !== 'Đã chia sẻ một ảnh' && <p>{msg.content}</p>}
                                                 </div>
                                             ) : (
@@ -218,6 +352,17 @@ const Chat: React.FC = () => {
                                                 {format(new Date(msg.created_at), 'HH:mm', { locale: vi })}
                                             </p>
                                         </div>
+
+                                        {/* Admin Delete Button */}
+                                        {isAdmin && (
+                                            <button
+                                                onClick={() => handleDeleteMessage(msg)}
+                                                className={`absolute top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ${isMe ? '-left-8' : '-right-8'}`}
+                                                title="Xóa tin nhắn"
+                                            >
+                                                <FaTrash size={12} />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             );
@@ -259,6 +404,48 @@ const Chat: React.FC = () => {
                     </footer>
                 </main>
             </div>
+
+            {/* Lightbox */}
+            {lightboxIndex !== null && imageMessages[lightboxIndex] && (
+                <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-200">
+                    <button
+                        onClick={() => setLightboxIndex(null)}
+                        className="absolute right-4 top-4 p-3 text-white/70 hover:text-white bg-black/20 hover:bg-black/40 rounded-full transition-colors z-20"
+                    >
+                        <FaTimes size={24} />
+                    </button>
+
+                    <button
+                        onClick={prevImage}
+                        disabled={lightboxIndex === 0}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 p-3 text-white/70 hover:text-white bg-black/20 hover:bg-black/40 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed z-20"
+                    >
+                        <FaChevronLeft size={32} />
+                    </button>
+
+                    <div className="relative max-w-[90vw] max-h-[90vh]">
+                        <img
+                            src={imageMessages[lightboxIndex].image_url!}
+                            alt="Full size"
+                            className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+                        />
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 px-4 py-2 rounded-full text-white text-sm backdrop-blur-md">
+                            {lightboxIndex + 1} / {imageMessages.length}
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={nextImage}
+                        disabled={lightboxIndex === imageMessages.length - 1}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 p-3 text-white/70 hover:text-white bg-black/20 hover:bg-black/40 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed z-20"
+                    >
+                        <FaChevronRight size={32} />
+                    </button>
+
+                    {/* Backdrop click to close */}
+                    <div className="absolute inset-0 -z-10" onClick={() => setLightboxIndex(null)}></div>
+                </div>
+            )}
         </div>
     );
 };

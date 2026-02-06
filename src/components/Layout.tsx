@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
     FaThLarge, FaWallet, FaStickyNote, FaCommentDots, FaCog,
-    FaSignOutAlt, FaUser, FaBell, FaSearch, FaBars, FaTimes, FaChevronRight, FaMagic, FaPalette, FaQrcode
+    FaSignOutAlt, FaUser, FaBell, FaSearch, FaBars, FaTimes, FaChevronRight, FaMagic, FaPalette, FaQrcode, FaChartPie
 } from 'react-icons/fa';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types';
@@ -24,6 +24,7 @@ const Layout: React.FC = () => {
     const navItems = [
         { to: '/', icon: FaThLarge, label: 'Tổng quan' },
         { to: '/wallet', icon: FaWallet, label: 'Ví tiền' },
+        { to: '/budget', icon: FaChartPie, label: 'Dự chi' },
         { to: '/scan', icon: FaQrcode, label: 'Quét thông minh' },
         { to: '/notes', icon: FaStickyNote, label: 'Ghi chú' },
         { to: '/chat', icon: FaCommentDots, label: 'Tin nhắn' },
@@ -336,7 +337,7 @@ const Layout: React.FC = () => {
                                 {({ isActive }) => (
                                     <>
                                         <Icon size={24} strokeWidth={isActive ? 3 : 2} />
-                                        <span className={`text-[8px] font-black uppercase tracking-widest ${isActive ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>{label}</span>
+                                        <span className={`text-[8px] hidden md:block font-black uppercase tracking-widest ${isActive ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>{label}</span>
                                     </>
                                 )}
                             </NavLink>

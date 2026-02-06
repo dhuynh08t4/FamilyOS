@@ -6,6 +6,8 @@ A real-time messaging platform for family coordination. It supports text message
 ## Features
 - **Real-time Messaging**: Instant message delivery using Supabase Realtime (broadcast/presence).
 - **Media Support**: Ability to share images (uploaded to `family-os` bucket).
+- **Image Lightbox**: Click to zoom, navigate between images, and view in full screen.
+- **Admin Controls**: Admins can delete individual messages or clear the entire chat history (including storage cleanup).
 - **Presence**: Shows who is currently online (future enhancement).
 - **Responsive Layout**: Sidebar for Desktop (chat list), full-screen for Mobile.
 

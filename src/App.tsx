@@ -9,6 +9,7 @@ import Chat from './pages/Chat';
 import Settings from './pages/Settings';
 import AIScanner from './pages/AIScanner';
 import Login from './pages/Login';
+import BudgetPlanning from './pages/BudgetPlanning';
 import { FaSpinner } from 'react-icons/fa';
 import { useTheme } from './hooks/useTheme';
 
@@ -55,6 +56,7 @@ function App() {
           <Route path="chat" element={<Chat />} />
           <Route path="settings" element={<Settings />} />
           <Route path="scan" element={<AIScanner />} />
+          <Route path="budget" element={<BudgetPlanning />} />
         </Route>
 
         {/* Catch all */}

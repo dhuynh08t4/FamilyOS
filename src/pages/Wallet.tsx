@@ -2,13 +2,19 @@ import React, { useState, useEffect } from 'react';
 import {
     FaArrowLeft, FaChevronLeft, FaChevronRight, FaCalendarAlt, FaSpinner, FaPlus, FaQrcode, FaTimesCircle, FaPen, FaSave,
     FaChartLine, FaTrash, FaChevronDown, FaShoppingCart, FaUtensils, FaBolt, FaFilm,
-    FaHeartbeat, FaHome, FaChild, FaEllipsisH, FaMoneyBillWave, FaBahai, FaChurch
+    FaHeartbeat, FaHome, FaChild, FaEllipsisH, FaMoneyBillWave, FaBahai, FaChurch, FaSearch
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import type { Transaction, Profile } from '../types';
+import type { Transaction, Profile, BudgetPlan } from '../types';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { useToast } from '../components/ui/ToastProvider';
+import { useDialog } from '../components/ui/DialogProvider';
+
+// ... (categoryIcons definition remains unchanged, not replacing it, user should skip this or I must include it?)
+// Wait, I am using replace_file_content.
+// I will target the imports and the start of the component.
 
 const categoryIcons: Record<string, any> = {
     'Dâng hiến': FaChurch,
@@ -28,28 +34,41 @@ const categoryIcons: Record<string, any> = {
 
 const Wallet: React.FC = () => {
     const navigate = useNavigate();
+    const { showToast } = useToast();
+    const { confirm } = useDialog();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [budgetPlans, setBudgetPlans] = useState<BudgetPlan[]>([]);
     const [profiles, setProfiles] = useState<Record<string, Profile>>({});
     const [loading, setLoading] = useState(true);
     const [totalSpent, setTotalSpent] = useState(0);
     const [totalIncome, setTotalIncome] = useState(0);
     const [isAddOpen, setIsAddOpen] = useState(false);
-    const [newTrans, setNewTrans] = useState({
+    const [newTrans, setNewTrans] = useState<{
+        amount: string;
+        category: string;
+        note: string;
+        date: string;
+        type: 'income' | 'expense';
+        budget_plan_id: string | null;
+    }>({
         amount: '',
         category: 'Đi chợ',
         note: '',
         date: new Date().toISOString().split('T')[0],
-        type: 'expense' as 'income' | 'expense'
+        type: 'expense',
+        budget_plan_id: null
     });
     const [editingId, setEditingId] = useState<string | number | null>(null);
     const [saving, setSaving] = useState(false);
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterCategory, setFilterCategory] = useState('all');
 
     // Filter and calculate breakdown inside the component where 'transactions' is available
     const categoriesBreakdown = Object.keys(categoryIcons).map(cat => {
         const spent = transactions
             .filter(t => (t.category === cat || (cat === 'Khác' && !categoryIcons[t.category])) && t.type === 'expense')
-            .reduce((acc, curr) => acc + curr.amount, 0);
+            .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
         return {
             label: cat,
             amount: spent,
@@ -69,7 +88,7 @@ const Wallet: React.FC = () => {
                     icon: categoryIcons[cat] || FaMoneyBillWave
                 };
             }
-            acc[cat].amount += curr.amount;
+            acc[cat].amount += (Number(curr.amount) || 0);
             return acc;
         }, {} as Record<string, any>);
 
@@ -111,12 +130,12 @@ const Wallet: React.FC = () => {
                 setTransactions(transData);
                 const spent = transData
                     .filter(t => t.type === 'expense')
-                    .reduce((acc, curr) => acc + curr.amount, 0);
+                    .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
                 setTotalSpent(spent);
 
                 const income = transData
                     .filter(t => t.type === 'income')
-                    .reduce((acc, curr) => acc + curr.amount, 0);
+                    .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
                 setTotalIncome(income);
             }
 
@@ -133,6 +152,16 @@ const Wallet: React.FC = () => {
                 setProfiles(profMap);
             }
 
+            // 3. Fetch Budget Plans
+            const { data: plansData } = await supabase
+                .from('budget_plans')
+                .select('*')
+                .eq('status', 'active');
+
+            if (plansData) {
+                setBudgetPlans(plansData);
+            }
+
         } catch (error) {
             console.error('Error fetching wallet data:', error);
         } finally {
@@ -141,7 +170,15 @@ const Wallet: React.FC = () => {
     };
 
     const handleDelete = async (id: string | number) => {
-        if (!confirm('Bạn có chắc chắn muốn xóa giao dịch này?')) return;
+        const confirmed = await confirm({
+            title: 'Xóa giao dịch',
+            message: 'Bạn có chắc chắn muốn xóa giao dịch này không? Hành động này không thể hoàn tác.',
+            confirmText: 'Xóa',
+            cancelText: 'Hủy',
+            type: 'danger'
+        });
+
+        if (!confirmed) return;
 
         // Optimistic UI update
         const originalTransactions = [...transactions];
@@ -160,10 +197,12 @@ const Wallet: React.FC = () => {
         const { error } = await supabase.from('transactions').delete().eq('id', id);
 
         if (error) {
-            alert('Lỗi khi xóa giao dịch: ' + error.message);
+            showToast('Lỗi khi xóa giao dịch: ' + error.message, 'error');
             // Revert if failed
             setTransactions(originalTransactions);
             fetchData();
+        } else {
+            showToast('Đã xóa giao dịch', 'success');
         }
     };
 
@@ -174,7 +213,8 @@ const Wallet: React.FC = () => {
             category: t.category, // Note: This might need mapping if old categories are in English
             note: t.note || '',
             date: t.date,
-            type: t.type as 'income' | 'expense'
+            type: t.type as 'income' | 'expense',
+            budget_plan_id: t.budget_plan_id || null
         });
         setIsAddOpen(true);
     };
@@ -192,7 +232,8 @@ const Wallet: React.FC = () => {
                 category: newTrans.category,
                 note: newTrans.note,
                 date: newTrans.date,
-                type: newTrans.type
+                type: newTrans.type,
+                budget_plan_id: newTrans.budget_plan_id
             };
 
             let error;
@@ -220,11 +261,13 @@ const Wallet: React.FC = () => {
                 category: 'Đi chợ',
                 note: '',
                 date: new Date().toISOString().split('T')[0],
-                type: 'expense'
+                type: 'expense',
+                budget_plan_id: null
             });
+            showToast(editingId ? 'Đã cập nhật giao dịch' : 'Đã thêm giao dịch mới', 'success');
             fetchData();
         } catch (err: any) {
-            alert(err.message);
+            showToast(err.message, 'error');
         } finally {
             setSaving(false);
         }
@@ -239,6 +282,15 @@ const Wallet: React.FC = () => {
             </div>
         );
     }
+
+    const filteredTransactions = transactions.filter(t => {
+        const matchesSearch = searchTerm === '' ||
+            (t.note?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                t.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (profiles[t.user_id]?.nice_name || '').toLowerCase().includes(searchTerm.toLowerCase()));
+        const matchesCategory = filterCategory === 'all' || t.category === filterCategory;
+        return matchesSearch && matchesCategory;
+    });
 
     return (
         <div className="bg-background-light dark:bg-background-dark min-h-screen pb-32">
@@ -270,7 +322,7 @@ const Wallet: React.FC = () => {
                     <div className="relative z-10 flex flex-col items-center text-center">
                         <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Số dư khả dụng</span>
                         <h1 className={`text-3xl lg:text-5xl font-black tracking-tighter mb-8 ${totalIncome - totalSpent >= 0 ? 'text-slate-900 dark:text-white' : 'text-red-500'}`}>
-                            ${(totalIncome - totalSpent).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            {(totalIncome - totalSpent).toLocaleString(undefined, { minimumFractionDigits: 0 })} đ
                         </h1>
 
                         {/* Circular Progress Chart */}
@@ -410,11 +462,36 @@ const Wallet: React.FC = () => {
                     </div>
                 </button>
 
-                {/* Recent Transactions List */}
                 <section>
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-widest">Giao dịch gần đây</h2>
-                        <button className="text-xs font-bold text-primary">Xem tất cả</button>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-widest shrink-0">Giao dịch gần đây</h2>
+
+                        <div className="flex flex-1 md:justify-end gap-3">
+                            <div className="relative flex-1 md:max-w-xs">
+                                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
+                                <input
+                                    type="text"
+                                    placeholder="Tìm kiếm giao dịch..."
+                                    className="w-full bg-white dark:bg-slate-900 pl-9 pr-4 py-2 rounded-xl text-sm font-medium border border-slate-100 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-slate-400"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="relative w-fit">
+                                <select
+                                    className="appearance-none bg-white dark:bg-slate-900 pl-4 pr-9 py-2 rounded-xl text-sm font-bold border border-slate-100 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all cursor-pointer"
+                                    value={filterCategory}
+                                    onChange={(e) => setFilterCategory(e.target.value)}
+                                >
+                                    <option value="all">Tất cả danh mục</option>
+                                    {Object.keys(categoryIcons).map(cat => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </select>
+                                <FaChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" />
+                            </div>
+                        </div>
                     </div>
 
                     {/* Responsive: Table on Tablet/Desktop, Cards on Mobile */}
@@ -432,7 +509,7 @@ const Wallet: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                {transactions.map((t) => (
+                                {filteredTransactions.map((t) => (
                                     <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
                                         <td className={`${rowSpace} text-sm text-slate-500`}>
                                             <div className="flex flex-col">
@@ -481,7 +558,7 @@ const Wallet: React.FC = () => {
 
                     {/* Mobile List View */}
                     <div className="md:hidden space-y-3">
-                        {transactions.map((t) => {
+                        {filteredTransactions.map((t) => {
                             const Icon = categoryIcons[t.category] || FaEllipsisH;
                             return (
                                 <div key={t.id} className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
@@ -524,7 +601,8 @@ const Wallet: React.FC = () => {
                             category: 'Đi chợ',
                             note: '',
                             date: new Date().toISOString().split('T')[0],
-                            type: 'expense'
+                            type: 'expense',
+                            budget_plan_id: null
                         });
                         setIsAddOpen(true);
                     }}
@@ -576,28 +654,42 @@ const Wallet: React.FC = () => {
                                     <div className="relative">
                                         <select
                                             className="w-full bg-slate-50 dark:bg-slate-800 px-4 py-3 rounded-xl text-sm font-bold appearance-none outline-none focus:ring-2 focus:ring-primary"
+                                            value={newTrans.budget_plan_id || ''}
+                                            onChange={e => setNewTrans({ ...newTrans, budget_plan_id: e.target.value || null })}
+                                        >
+                                            <option value="">Không có khoản dự chi</option>
+                                            {budgetPlans.filter(p => p.status === 'active').map(plan => (
+                                                <option key={plan.id} value={plan.id}>{plan.name}</option>
+                                            ))}
+                                        </select>
+                                        <FaChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                    </div>
+                                    <div className="relative">
+                                        <select
+                                            className="w-full bg-slate-50 dark:bg-slate-800 px-4 py-3 rounded-xl text-sm font-bold appearance-none outline-none focus:ring-2 focus:ring-primary"
                                             value={newTrans.category}
                                             onChange={e => setNewTrans({ ...newTrans, category: e.target.value })}
                                         >
                                             {Object.keys(categoryIcons).map(cat => <option key={cat}>{cat}</option>)}
                                         </select>
-                                        <FaChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <FaChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                     </div>
-                                    <input
-                                        required
-                                        type="date"
-                                        className="w-full bg-slate-50 dark:bg-slate-800 px-4 py-3 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-primary"
-                                        value={newTrans.date}
-                                        onChange={e => setNewTrans({ ...newTrans, date: e.target.value })}
+                                </div>
+                                <input
+                                    required
+                                    type="date"
+                                    className="w-full bg-slate-50 dark:bg-slate-800 px-4 py-3 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-primary"
+                                    value={newTrans.date}
+                                    onChange={e => setNewTrans({ ...newTrans, date: e.target.value })}
+                                />
+                                <div className="space-y-4">
+                                    <textarea
+                                        placeholder="Thêm ghi chú (tùy chọn)..."
+                                        className="w-full bg-slate-50 dark:bg-slate-800 px-4 py-4 rounded-2xl text-sm font-medium outline-none focus:ring-2 focus:ring-primary min-h-[100px] resize-none"
+                                        value={newTrans.note}
+                                        onChange={e => setNewTrans({ ...newTrans, note: e.target.value })}
                                     />
                                 </div>
-
-                                <textarea
-                                    placeholder="Thêm ghi chú (tùy chọn)..."
-                                    className="w-full bg-slate-50 dark:bg-slate-800 px-4 py-4 rounded-2xl text-sm font-medium outline-none focus:ring-2 focus:ring-primary min-h-[100px] resize-none"
-                                    value={newTrans.note}
-                                    onChange={e => setNewTrans({ ...newTrans, note: e.target.value })}
-                                />
                             </div>
 
                             <button

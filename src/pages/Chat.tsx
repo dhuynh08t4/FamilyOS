@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { FaPaperPlane, FaImage, FaPlus, FaSearch, FaSpinner, FaUser, FaVideo, FaInfoCircle, FaTrash, FaTimes, FaChevronLeft, FaChevronRight, FaRobot, FaMagic, FaLaughSquint, FaStickyNote, FaChartPie, FaWallet, FaListUl, FaFire, FaHistory } from 'react-icons/fa';
 import { supabase } from '../lib/supabase';
 import type { Message, Profile } from '../types';
@@ -356,15 +356,20 @@ const Chat: React.FC = () => {
                         </>
                     )}
                     {currentRoom === 'ai' && (
-                        <button
-                            onClick={() => {
-                                setAiMessages([{ role: 'ai', content: 'Chào bạn! Tôi có thể giúp gì cho gia đình mình hôm nay?', created_at: new Date().toISOString() }]);
-                            }}
-                            className="size-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500"
-                            title="Làm mới hội thoại"
-                        >
-                            <FaSpinner size={16} className={sending ? 'animate-spin' : ''} />
-                        </button>
+                        <div className="flex gap-1">
+                            <button className="size-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-primary" title="AI Analyst">
+                                <FaChartPie size={18} />
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setAiMessages([{ role: 'ai', content: 'Chào bạn! Tôi có thể giúp gì cho gia đình mình hôm nay?', created_at: new Date().toISOString() }]);
+                                }}
+                                className="size-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500"
+                                title="Làm mới hội thoại"
+                            >
+                                <FaSpinner size={16} className={sending ? 'animate-spin' : ''} />
+                            </button>
+                        </div>
                     )}
                 </div>
             </header>
@@ -415,6 +420,46 @@ const Chat: React.FC = () => {
                             </div>
                         </div>
 
+                        {/* AI Quick Tools Section */}
+                        <div className="mt-8 px-4 mb-4">
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+                                <FaMagic className="text-primary" />
+                                <span>AI Shortcuts</span>
+                            </h3>
+                            <div className="grid grid-cols-4 gap-2">
+                                {[
+                                    { icon: FaWallet, label: "Chi tiêu", color: "text-rose-500", prompt: "Tôi muốn thêm một khoản chi tiêu" },
+                                    { icon: FaChartPie, label: "Dự chi", color: "text-emerald-500", prompt: "Tôi muốn thêm một khoản dự chi" },
+                                    { icon: FaStickyNote, label: "Ghi chú", color: "text-blue-500", prompt: "Tôi muốn thêm một ghi chú" },
+                                    { icon: FaLaughSquint, label: "Hài hước", color: "text-amber-500", prompt: "Kể một câu chuyện cười" },
+                                ].map((tool, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => {
+                                            if (currentRoom !== 'ai') {
+                                                setCurrentRoom('ai');
+                                                setSearchParams({ mode: 'ai' });
+                                            }
+                                            handleSendMessage({ preventDefault: () => { }, target: { value: tool.prompt } } as any);
+                                            // Wait, handleSendMessage uses inputText state.
+                                            // I should setInputText then call handleSendMessage or just use the prompt.
+                                            setInputText(tool.prompt);
+                                            setTimeout(() => handleSendMessage(), 0);
+                                        }}
+                                        className="flex flex-col items-center gap-1 group"
+                                    >
+                                        <div className="size-10 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                            <tool.icon size={18} className={tool.color} />
+                                        </div>
+                                        <span className="text-[9px] font-bold text-slate-500 group-hover:text-primary transition-colors">{tool.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="px-4 mt-6 mb-2">
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Thành viên</h3>
+                        </div>
                         {Object.values(profiles)
                             .filter(p => !memberSearch || (p.nice_name || p.full_name || '').toLowerCase().includes(memberSearch.toLowerCase()))
                             .map(profile => (
@@ -534,28 +579,32 @@ const Chat: React.FC = () => {
 
                     {/* Input Area */}
                     <footer className="px-4 py-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 space-y-4">
-                        {currentRoom === 'ai' && (
-                            <div className="flex items-center gap-4 overflow-x-auto pb-2 no-scrollbar">
-                                {[
-                                    { icon: FaLaughSquint, label: "Kể 1 câu chuyện cười", type: 'direct', title: "Kể chuyện cười" },
-                                    { icon: FaStickyNote, label: "Thêm ghi chú:", type: 'input', title: "Thêm ghi chú" },
-                                    { icon: FaChartPie, label: "Thêm khoản cần chi:", type: 'input', title: "Dự chi mới" },
-                                    { icon: FaWallet, label: "Thêm khoản đã chi:", type: 'input', title: "Chi tiêu mới" },
-                                    { icon: FaListUl, label: "Tóm tắt dự chi tháng này", type: 'direct', title: "Tóm tắt dự chi" },
-                                    { icon: FaHistory, label: "10 ghi chú gần nhất", type: 'direct', title: "10 ghi chú gần nhất" },
-                                    { icon: FaFire, label: "5 khoản chi nhiều nhất tháng này", type: 'direct', title: "5 khoản chi lớn nhất" },
-                                ].map((action, idx) => (
-                                    <button
-                                        key={idx}
-                                        onClick={() => handleQuickAction(action as any)}
-                                        title={action.title}
-                                        className="flex-shrink-0 size-11 flex items-center justify-center bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl hover:border-primary hover:text-primary transition-all shadow-sm active:scale-90"
-                                    >
-                                        <action.icon size={24} className="text-primary" />
-                                    </button>
-                                ))}
-                            </div>
-                        )}
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+                            {[
+                                { icon: FaLaughSquint, label: "Kể một câu chuyện cười", type: 'direct', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+                                { icon: FaStickyNote, label: "Thêm ghi chú:", type: 'input', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+                                { icon: FaChartPie, label: "Thêm dự chi:", type: 'input', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
+                                { icon: FaWallet, label: "Thêm khoản chi:", type: 'input', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' },
+                                { icon: FaListUl, label: "Tóm tắt dự chi", type: 'direct', color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' },
+                                { icon: FaHistory, label: "Xem ghi chú", type: 'direct', color: 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400' },
+                                { icon: FaFire, label: "Chi tiêu lớn nhất", type: 'direct', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
+                            ].map((action, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => {
+                                        if (currentRoom !== 'ai') {
+                                            setCurrentRoom('ai');
+                                            setSearchParams({ mode: 'ai' });
+                                        }
+                                        handleQuickAction(action as any);
+                                    }}
+                                    className={`flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all shadow-sm active:scale-95 border border-transparent hover:border-current ${action.color}`}
+                                >
+                                    <action.icon size={12} />
+                                    <span>{action.label.replace(':', '')}</span>
+                                </button>
+                            ))}
+                        </div>
                         <form onSubmit={handleSendMessage} className="flex items-center gap-3">
                             <button
                                 type="button"

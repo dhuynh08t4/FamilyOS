@@ -8,7 +8,7 @@ const Dashboard: React.FC = () => {
     const navigate = useNavigate();
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState({ spent: 0, budget: 2000 });
+    const [stats, setStats] = useState({ spent: 0, budget: 0 });
     const [recentNotes, setRecentNotes] = useState<any[]>([]);
     const [activities, setActivities] = useState<any[]>([]);
 
@@ -28,12 +28,13 @@ const Dashboard: React.FC = () => {
 
             const { data: trans } = await supabase
                 .from('transactions')
-                .select('amount')
-                .eq('type', 'expense')
+                .select('amount, type')
                 .gte('date', startOfMonth.toISOString().split('T')[0]);
 
-            const total = trans?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
-            setStats(prev => ({ ...prev, spent: total }));
+            const spentTotal = trans?.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+            const incomeTotal = trans?.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0) || 0;
+
+            setStats({ spent: spentTotal, budget: incomeTotal });
 
             // 3. Notes
             const { data: notes } = await supabase

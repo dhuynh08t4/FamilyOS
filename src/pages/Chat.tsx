@@ -6,9 +6,11 @@ import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import imageCompression from 'browser-image-compression';
 import { useDialog } from '../components/ui/DialogProvider';
+import { useToast } from '../components/ui/ToastProvider';
 
 const Chat: React.FC = () => {
     const { confirm } = useDialog();
+    const { showToast } = useToast();
     const [messages, setMessages] = useState<Message[]>([]);
     const [profiles, setProfiles] = useState<Record<string, Profile>>({});
     const [currentUser, setCurrentUser] = useState<string | null>(null);
@@ -16,6 +18,7 @@ const Chat: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+    const [memberSearch, setMemberSearch] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -242,6 +245,14 @@ const Chat: React.FC = () => {
         }
     };
 
+    const handleVideoCall = () => {
+        showToast('Tính năng gọi video đang được phát triển', 'info');
+    };
+
+    const handleInfo = () => {
+        showToast(`Nhóm gia đình: ${Object.keys(profiles).length} thành viên`, 'info');
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
@@ -276,10 +287,10 @@ const Chat: React.FC = () => {
                             <FaTrash size={16} />
                         </button>
                     )}
-                    <button className="size-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <button onClick={handleVideoCall} className="size-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                         <FaVideo size={20} className="text-slate-500" />
                     </button>
-                    <button className="size-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <button onClick={handleInfo} className="size-9 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                         <FaInfoCircle size={20} className="text-slate-500" />
                     </button>
                 </div>
@@ -288,21 +299,45 @@ const Chat: React.FC = () => {
             {/* Chat List & Main View (Tablet/Desktop Layout) */}
             <div className="flex-1 flex overflow-hidden">
                 {/* Desktop Side List (Optional hidden on mobile) */}
-                <aside className="hidden lg:block w-80 border-r border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
+                <aside className="hidden lg:flex flex-col w-80 border-r border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
                     <div className="p-4">
                         <div className="relative">
                             <FaSearch size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input className="w-full bg-white dark:bg-slate-800 border-none rounded-xl py-2 pl-10 pr-4 text-xs font-medium outline-none" placeholder="Tìm kiếm thành viên..." />
+                            <input
+                                className="w-full bg-white dark:bg-slate-800 border-none rounded-xl py-2 pl-10 pr-4 text-xs font-medium outline-none"
+                                placeholder="Tìm kiếm thành viên..."
+                                value={memberSearch}
+                                onChange={(e) => setMemberSearch(e.target.value)}
+                            />
                         </div>
                     </div>
-                    <div className="space-y-1 px-2">
-                        <div className="bg-primary/10 border-l-4 border-primary p-3 rounded-r-xl flex items-center gap-3">
+                    <div className="flex-1 overflow-y-auto space-y-1 px-2 pb-4">
+                        <div className="bg-primary/10 border-l-4 border-primary p-3 rounded-r-xl flex items-center gap-3 cursor-pointer">
                             <div className="size-10 rounded-full bg-primary text-white flex items-center justify-center font-bold">#</div>
                             <div>
                                 <p className="text-sm font-bold">Nhóm chung</p>
                                 <p className="text-[10px] text-slate-500 truncate">Kênh trò chuyện gia đình</p>
                             </div>
                         </div>
+
+                        {Object.values(profiles)
+                            .filter(p => !memberSearch || (p.nice_name || p.full_name || '').toLowerCase().includes(memberSearch.toLowerCase()))
+                            .map(profile => (
+                                <div key={profile.id} className="p-3 rounded-xl flex items-center gap-3 hover:bg-white dark:hover:bg-slate-800 transition-colors cursor-pointer opacity-70 hover:opacity-100">
+                                    <div className="size-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold overflow-hidden">
+                                        {profile.avatar_url ? (
+                                            <img src={profile.avatar_url} alt={profile.nice_name || ''} className="size-full object-cover" />
+                                        ) : (
+                                            (profile.nice_name?.[0] || profile.full_name?.[0] || '?').toUpperCase()
+                                        )}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold">{profile.nice_name || profile.full_name}</p>
+                                        <p className="text-[10px] text-slate-400 capitalize">{profile.role === 'kid' ? 'Thành viên nhỏ' : (profile.role === 'admin' ? 'Quản trị viên' : 'Thành viên')}</p>
+                                    </div>
+                                    {profile.role === 'admin' && <div className="ml-auto text-[10px] px-1.5 py-0.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 rounded border border-yellow-200 dark:border-yellow-900/50">Admin</div>}
+                                </div>
+                            ))}
                     </div>
                 </aside>
 
@@ -317,8 +352,12 @@ const Chat: React.FC = () => {
                             return (
                                 <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} items-end gap-2 group`}>
                                     {!isMe && showAvatar && (
-                                        <div className="size-8 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0 flex items-center justify-center text-[10px] font-bold">
-                                            {profile?.full_name?.[0] || '?'}
+                                        <div className="size-8 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0 flex items-center justify-center text-[10px] font-bold overflow-hidden">
+                                            {profile?.avatar_url ? (
+                                                <img src={profile.avatar_url} alt={profile.nice_name || ''} className="size-full object-cover" />
+                                            ) : (
+                                                (profile?.nice_name?.[0] || profile?.full_name?.[0] || '?').toUpperCase()
+                                            )}
                                         </div>
                                     )}
                                     {!isMe && !showAvatar && <div className="w-8 flex-shrink-0"></div>}
@@ -388,7 +427,11 @@ const Chat: React.FC = () => {
                                     value={inputText}
                                     onChange={(e) => setInputText(e.target.value)}
                                 />
-                                <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                                <button
+                                    type="button"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
                                     <FaImage size={18} />
                                 </button>
                             </div>

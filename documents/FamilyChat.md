@@ -9,7 +9,9 @@ A real-time messaging platform for family coordination. It supports text message
 - **Image Lightbox**: Click to zoom, navigate between images, and view in full screen.
 - **Admin Controls**: Admins can delete individual messages or clear the entire chat history (including storage cleanup).
 - **Presence**: Shows who is currently online (future enhancement).
-- **Responsive Layout**: Sidebar for Desktop (chat list), full-screen for Mobile.
+- **Responsive Layout**: Sidebar for Desktop displaying the group and member list, full-screen for Mobile.
+- **Member Directory**: Integrated sidebar showing all family members with their avatars and roles.
+- **Member Search**: Real-time searching/filtering of family members in the sidebar.
 
 ## Technical Details
 - **Subscription**: Dedicated channel `family_chat` for real-time insert events.

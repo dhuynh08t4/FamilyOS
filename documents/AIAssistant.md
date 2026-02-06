@@ -13,6 +13,7 @@ A smart digital companion integrated into FamilyOS to help manage finances, note
 - **Theme Management**: Change system color themes and light/dark modes (e.g., "Chế độ tối", "Màu hồng").
 - **Quick Actions**: Icon-based buttons for frequent tasks (Joke, Add Note, Add Budget, Add Expense, Summaries).
 - **Interactive Data**: Query results are rendered as structured UI cards within the chat.
+- **Text-to-Speech (TTS)**: High-quality Vietnamese voice narration for AI responses using Natural/Google voices.
 
 ## Integration
 - **Floating Bubble**: Accessible from any page via a floating action button.

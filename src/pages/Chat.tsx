@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FaPaperPlane, FaImage, FaPlus, FaSearch, FaSpinner, FaUser, FaVideo, FaInfoCircle, FaTrash, FaTimes, FaChevronLeft, FaChevronRight, FaRobot, FaMagic, FaLaughSquint, FaStickyNote, FaChartPie, FaWallet, FaListUl, FaFire, FaHistory } from 'react-icons/fa';
+import { FaPaperPlane, FaImage, FaPlus, FaSearch, FaSpinner, FaUser, FaVideo, FaInfoCircle, FaTrash, FaTimes, FaChevronLeft, FaChevronRight, FaRobot, FaMagic, FaLaughSquint, FaStickyNote, FaChartPie, FaWallet, FaListUl, FaFire, FaHistory, FaVolumeUp } from 'react-icons/fa';
 import { supabase } from '../lib/supabase';
 import type { Message, Profile } from '../types';
 import { format } from 'date-fns';
@@ -171,6 +171,32 @@ const Chat: React.FC = () => {
         } else {
             setInputText(action.label + ' ');
         }
+    };
+
+    const speakText = (text: string) => {
+        if (!window.speechSynthesis) {
+            showToast("Trình duyệt không hỗ trợ đọc văn bản", "error");
+            return;
+        }
+
+        window.speechSynthesis.cancel();
+
+        setTimeout(() => {
+            const utterance = new SpeechSynthesisUtterance(text);
+            const voices = window.speechSynthesis.getVoices();
+
+            // Ưu tiên giọng Google Tiếng Việt hoặc giọng Natural của hệ thống
+            const viVoice = voices.find(v => v.lang.includes('vi') && (v.name.includes('Google') || v.name.includes('Natural')))
+                || voices.find(v => v.lang.includes('vi'));
+
+            if (viVoice) utterance.voice = viVoice;
+
+            utterance.lang = 'vi-VN';
+            utterance.rate = 1.05;
+            utterance.pitch = 1.0;
+
+            window.speechSynthesis.speak(utterance);
+        }, 50);
     };
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -564,7 +590,18 @@ const Chat: React.FC = () => {
                                                     ? 'bg-primary text-white rounded-br-none'
                                                     : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-bl-none border border-slate-100 dark:border-slate-700'}
                                             `}>
-                                                <p className="whitespace-pre-wrap">{msg.content}</p>
+                                                <div className="flex justify-between items-start gap-4">
+                                                    <div className="flex-1 whitespace-pre-wrap">{msg.content}</div>
+                                                    {!isMe && (
+                                                        <button
+                                                            onClick={() => speakText(msg.content)}
+                                                            className="mt-1 text-slate-400 hover:text-primary transition-colors flex-shrink-0"
+                                                            title="Đọc câu trả lời"
+                                                        >
+                                                            <FaVolumeUp size={12} />
+                                                        </button>
+                                                    )}
+                                                </div>
                                                 <p className={`text-[8px] mt-1 text-right ${isMe ? 'text-white/70' : 'text-slate-400'}`}>
                                                     {format(new Date(msg.created_at), 'HH:mm', { locale: vi })}
                                                 </p>

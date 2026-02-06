@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaRobot, FaTimes, FaPaperPlane, FaSpinner, FaMagic, FaLaughSquint, FaStickyNote, FaChartPie, FaWallet, FaListUl, FaFire, FaHistory, FaExpandAlt } from 'react-icons/fa';
+import { FaRobot, FaTimes, FaPaperPlane, FaSpinner, FaMagic, FaLaughSquint, FaStickyNote, FaChartPie, FaWallet, FaListUl, FaFire, FaHistory, FaExpandAlt, FaVolumeUp } from 'react-icons/fa';
 import { processAIRequest, executeAIAction } from '../lib/ai-agent';
 import { supabase } from '../lib/supabase';
 import { useToast } from './ui/ToastProvider';
@@ -60,6 +60,34 @@ const AIChatBubble: React.FC = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const speakText = (text: string) => {
+        if (!window.speechSynthesis) {
+            showToast("Trình duyệt không hỗ trợ đọc văn bản", "error");
+            return;
+        }
+
+        window.speechSynthesis.cancel();
+
+        // Thêm một chút delay để đảm bảo việc hủy giọng cũ hoàn tất
+        setTimeout(() => {
+            const utterance = new SpeechSynthesisUtterance(text);
+
+            // Tìm giọng đọc Tiếng Việt tốt nhất (ưu tiên Google hoặc giọng tự nhiên)
+            const voices = window.speechSynthesis.getVoices();
+            const viVoice = voices.find(v => v.lang.includes('vi') && (v.name.includes('Google') || v.name.includes('Natural')))
+                || voices.find(v => v.lang.includes('vi'));
+
+            if (viVoice) utterance.voice = viVoice;
+
+            utterance.lang = 'vi-VN';
+            utterance.rate = 1.05; // Tốc độ nhanh hơn một chút để tự nhiên hơn
+            utterance.pitch = 1.0; // Cao độ ổn định
+            utterance.volume = 1.0;
+
+            window.speechSynthesis.speak(utterance);
+        }, 50);
     };
 
     const handleQuickAction = (action: { label: string, type: 'direct' | 'input' }) => {
@@ -178,7 +206,18 @@ const AIChatBubble: React.FC = () => {
                                     ? 'bg-primary text-white rounded-tr-none'
                                     : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-tl-none border border-slate-100/50 dark:border-slate-700/50'
                                     }`}>
-                                    {m.content}
+                                    <div className="flex justify-between items-start gap-4">
+                                        <div className="flex-1 whitespace-pre-wrap">{m.content}</div>
+                                        {m.role === 'ai' && (
+                                            <button
+                                                onClick={() => speakText(m.content)}
+                                                className="mt-1 text-slate-400 hover:text-primary transition-colors flex-shrink-0"
+                                                title="Đọc câu trả lời"
+                                            >
+                                                <FaVolumeUp size={12} />
+                                            </button>
+                                        )}
+                                    </div>
                                     {renderData(m.data)}
                                 </div>
                             </div>

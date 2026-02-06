@@ -8,7 +8,7 @@ export interface AIAction {
 }
 
 export const AI_SYSTEM_PROMPT = `
-Bạn là "FamilyOS Assistant" - Trợ lý thông minh toàn năng cho gia đình.
+Bạn là "Siêu Trợ lý" - Trợ lý thông minh toàn năng cho gia đình.
 Nhiệm vụ: Giúp người dùng quản lý tài chính (ví, dự chi), ghi chú, tin nhắn và cài đặt hệ thống (theme).
 
 KHẢ NĂNG CỦA BẠN:

@@ -3,7 +3,7 @@ import { FaChevronLeft, FaSearchPlus, FaSync, FaCheck, FaSpinner, FaMagic, FaUpl
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { generateSmartContent, GEMINI_MODELS } from '../lib/gemini';
-import imageCompression from 'browser-image-compression';
+
 
 interface ScannedItem {
     id: string;
@@ -50,6 +50,20 @@ const AIScanner: React.FC = () => {
                 const base64Data = (reader.result as string).split(',')[1];
                 setProgress(50);
 
+                /*
+                    'Dâng hiến': FaChurch,
+                    'Ăn uống': FaUtensils,
+                    'Mua sắm': FaShoppingCart,
+                    'Nợ': FaBahai,
+                    'Điện nước': FaBolt,
+                    'Giải trí': FaFilm,
+                    'Sức khỏe': FaHeartbeat,
+                    'Di chuyển': FaHome,
+                    'Con cái': FaChild,
+                    'Khác': FaEllipsisH,
+                    'Thu nhập': FaMoneyBillWave,
+                    'Thu khác': FaMoneyBillWave
+                */
                 const prompt = `Analyze this image which may contain ONE or MORE receipts/items. 
                 Extract transaction data for EACH distinct receipt or line item you can identify.
                 Return a JSON ARRAY of objects. Format:
@@ -57,7 +71,7 @@ const AIScanner: React.FC = () => {
                     {
                         "amount": number,
                         "date": "YYYY-MM-DD",
-                        "category": "string (one of: Đi chợ, Ăn uống, Điện nước, Giải trí, Di chuyển, Sức khỏe, Con cái, Dâng hiến, Khác)",
+                        "category": "string (one of: Dâng hiến, Ăn uống, Mua sắm, Nợ, Điện nước, Giải trí, Sức khỏe, Di chuyển, Con cái, Khác, Thu nhập, Thu khác)",
                         "note": "brief summary in Vietnamese"
                     }
                 ]
@@ -109,13 +123,12 @@ const AIScanner: React.FC = () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not authenticated');
 
-            // 1. Compress and Upload Image (Once for all items)
-            const compressedFile = await imageCompression(selectedFile, { maxSizeMB: 1, maxWidthOrHeight: 1024 });
+            // 1. Upload Original Image (Preserve Quality)
             const fileName = `${user.id}/${Date.now()}-${selectedFile.name}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('family-os')
-                .upload(fileName, compressedFile);
+                .upload(fileName, selectedFile);
 
             if (uploadError) throw uploadError;
 

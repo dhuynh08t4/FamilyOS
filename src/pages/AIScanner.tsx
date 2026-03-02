@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { generateSmartContent, GEMINI_MODELS } from '../lib/gemini';
 import { useToast } from '../components/ui/ToastProvider';
+import { formatDateLocal } from '../utils/date';
 
 interface ScannedItem {
     id: string;
@@ -96,7 +97,7 @@ const AIScanner: React.FC = () => {
                     const mappedItems = items.map((item: any) => ({
                         id: Math.random().toString(36).substr(2, 9),
                         amount: item.amount ? Math.abs(parseFloat(item.amount.toString().replace(/,/g, ''))).toString() : '',
-                        date: item.date || new Date().toISOString().split('T')[0],
+                        date: item.date || formatDateLocal(new Date()),
                         category: item.category || 'Đi chợ',
                         note: item.note || ''
                     }));
@@ -179,7 +180,7 @@ const AIScanner: React.FC = () => {
         setScannedItems(prev => [...prev, {
             id: Math.random().toString(36).substr(2, 9),
             amount: '',
-            date: new Date().toISOString().split('T')[0],
+            date: formatDateLocal(new Date()),
             category: 'Đi chợ',
             note: ''
         }]);

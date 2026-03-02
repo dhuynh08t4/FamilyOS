@@ -12,6 +12,7 @@ import type { BudgetPlan, Transaction } from '../types';
 import { useToast } from '../components/ui/ToastProvider';
 import { useDialog } from '../components/ui/DialogProvider';
 import { subDays, subMonths, subYears, isAfter, parseISO, format } from 'date-fns';
+import { formatDateLocal } from '../utils/date';
 
 
 type FilterType = '1_week' | '30_days' | '6_months' | '1_year' | 'all';
@@ -61,7 +62,7 @@ const BudgetPlanning: React.FC = () => {
     // Transaction Creation in Modal
     const [newTransAmount, setNewTransAmount] = useState('');
     const [newTransCategory, setNewTransCategory] = useState('');
-    const [newTransDate, setNewTransDate] = useState(new Date().toISOString().split('T')[0]);
+    const [newTransDate, setNewTransDate] = useState(formatDateLocal(new Date()));
     const [newTransNote, setNewTransNote] = useState('');
     const [isAddingTrans, setIsAddingTrans] = useState(false);
     const [isLinkingTrans, setIsLinkingTrans] = useState(false);
@@ -271,7 +272,7 @@ const BudgetPlanning: React.FC = () => {
                 amount: parseFloat(newTransAmount),
                 category: newTransCategory || 'Khác',
                 note: newTransNote,
-                date: newTransDate ? new Date(newTransDate).toISOString() : new Date().toISOString(),
+                date: newTransDate || formatDateLocal(new Date()),
                 budget_plan_id: viewingPlan.id,
                 type: 'expense'
             });
@@ -280,7 +281,7 @@ const BudgetPlanning: React.FC = () => {
 
             setNewTransAmount('');
             setNewTransCategory('');
-            setNewTransDate(new Date().toISOString().split('T')[0]);
+            setNewTransDate(formatDateLocal(new Date()));
             setNewTransNote('');
             setIsAddingTrans(false);
             showToast('Đã thêm giao dịch', 'success');

@@ -11,10 +11,7 @@ import { format, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns
 import { vi } from 'date-fns/locale';
 import { useToast } from '../components/ui/ToastProvider';
 import { useDialog } from '../components/ui/DialogProvider';
-
-// ... (categoryIcons definition remains unchanged, not replacing it, user should skip this or I must include it?)
-// Wait, I am using replace_file_content.
-// I will target the imports and the start of the component.
+import { formatDateLocal } from '../utils/date';
 
 const categoryIcons: Record<string, any> = {
     'Dâng hiến': FaChurch,
@@ -54,7 +51,7 @@ const Wallet: React.FC = () => {
         amount: '',
         category: 'Đi chợ',
         note: '',
-        date: new Date().toISOString().split('T')[0],
+        date: formatDateLocal(new Date()),
         type: 'expense',
         budget_plan_id: null
     });
@@ -120,8 +117,8 @@ const Wallet: React.FC = () => {
     const fetchData = async () => {
         try {
             // 1. Fetch transactions
-            const start = startOfMonth(currentDate).toISOString();
-            const end = endOfMonth(currentDate).toISOString();
+            const start = formatDateLocal(startOfMonth(currentDate));
+            const end = formatDateLocal(endOfMonth(currentDate));
 
             const { data: transData } = await supabase
                 .from('transactions')
@@ -264,7 +261,7 @@ const Wallet: React.FC = () => {
                 amount: '',
                 category: 'Đi chợ',
                 note: '',
-                date: new Date().toISOString().split('T')[0],
+                date: formatDateLocal(new Date()),
                 type: 'expense',
                 budget_plan_id: null
             });
@@ -604,7 +601,7 @@ const Wallet: React.FC = () => {
                             amount: '',
                             category: 'Đi chợ',
                             note: '',
-                            date: new Date().toISOString().split('T')[0],
+                            date: formatDateLocal(new Date()),
                             type: 'expense',
                             budget_plan_id: null
                         });

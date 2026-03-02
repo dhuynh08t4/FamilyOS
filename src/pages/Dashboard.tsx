@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types';
+import { formatDateLocal } from '../utils/date';
 
 const Dashboard: React.FC = () => {
     const navigate = useNavigate();
@@ -29,7 +30,7 @@ const Dashboard: React.FC = () => {
             const { data: trans } = await supabase
                 .from('transactions')
                 .select('amount, type')
-                .gte('date', startOfMonth.toISOString().split('T')[0]);
+                .gte('date', formatDateLocal(startOfMonth));
 
             const spentTotal = trans?.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0) || 0;
             const incomeTotal = trans?.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0) || 0;

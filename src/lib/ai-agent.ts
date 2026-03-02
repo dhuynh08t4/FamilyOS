@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { generateSmartContent } from './gemini';
+import { formatDateLocal } from '../utils/date';
 
 export interface AIAction {
     action: string;
@@ -59,7 +60,7 @@ export async function processAIRequest(userInput: string, userId: string) {
     - User ID: ${userId}
     - Thành viên: ${JSON.stringify(profiles)}
     - Giao dịch gần đây: ${JSON.stringify(recentTrans)}
-    - Ngày hiện tại: ${new Date().toISOString().split('T')[0]}
+    - Ngày hiện tại: ${formatDateLocal(new Date())}
     `;
 
     const result = await generateSmartContent(

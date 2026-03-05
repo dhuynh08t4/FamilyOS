@@ -8,6 +8,8 @@ import { supabase } from '../lib/supabase';
 import type { Profile } from '../types';
 import { ThemeSelector } from './ThemeSelector';
 import AIChatBubble from './AIChatBubble';
+import { motion, AnimatePresence } from 'framer-motion';
+
 
 const Layout: React.FC = () => {
     const navigate = useNavigate();
@@ -23,10 +25,10 @@ const Layout: React.FC = () => {
     const [isSearchFocused, setIsSearchFocused] = useState(false);
 
     const navItems = [
-        { to: '/', icon: FaThLarge, label: 'Tổng quan' },
-        { to: '/wallet', icon: FaWallet, label: 'Ví tiền' },
+        { to: '/', icon: FaThLarge, label: 'Dashboard' },
+        { to: '/wallet', icon: FaWallet, label: 'Ví' },
         { to: '/budget', icon: FaChartPie, label: 'Dự chi' },
-        { to: '/scan', icon: FaQrcode, label: 'Quét thông minh' },
+        { to: '/scan', icon: FaQrcode, label: 'Quét' },
         { to: '/notes', icon: FaStickyNote, label: 'Ghi chú' },
         { to: '/chat', icon: FaCommentDots, label: 'Tin nhắn' },
         { to: '/settings', icon: FaCog, label: 'Cài đặt' },
@@ -326,25 +328,123 @@ const Layout: React.FC = () => {
 
                 {/* Mobile Bottom Navigation */}
                 <nav className="lg:hidden fixed bottom-6 left-6 right-6 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/50 rounded-[2.5rem] px-6 py-3 shadow-2xl z-50">
-                    <div className="flex justify-between items-center">
-                        {navItems.map(({ to, icon: Icon, label }) => (
+                    <div className="flex justify-between items-center h-14 relative">
+                        {/* Dashboard */}
+                        <NavLink
+                            to="/"
+                            className={({ isActive }) =>
+                                `flex flex-col items-center gap-1 transition-all flex-1 ${isActive ? 'text-primary' : 'text-slate-400'}`
+                            }
+                        >
+                            <FaThLarge size={22} />
+                            <span className="text-[10px] font-bold">Dashboard</span>
+                        </NavLink>
+
+                        {/* Ví */}
+                        <NavLink
+                            to="/wallet"
+                            className={({ isActive }) =>
+                                `flex flex-col items-center gap-1 transition-all flex-1 ${isActive ? 'text-primary' : 'text-slate-400'}`
+                            }
+                        >
+                            <FaWallet size={22} />
+                            <span className="text-[10px] font-bold">Ví</span>
+                        </NavLink>
+
+                        {/* Center Scan Button */}
+                        <div className="flex-1 flex justify-center -mt-12">
                             <NavLink
-                                key={to}
-                                to={to}
+                                to="/scan"
                                 className={({ isActive }) =>
-                                    `flex flex-col items-center gap-1 transition-all ${isActive ? 'text-primary scale-110' : 'text-slate-400 dark:text-slate-600'}`
+                                    `size-16 rounded-full flex items-center justify-center text-white shadow-xl transition-all duration-300 transform ${isActive ? 'bg-primary scale-110 ring-4 ring-primary/20' : 'bg-gradient-to-tr from-primary to-indigo-500 hover:scale-105 active:scale-95'}`
                                 }
                             >
-                                {({ isActive }) => (
-                                    <>
-                                        <Icon size={24} strokeWidth={isActive ? 3 : 2} />
-                                        <span className={`text-[8px] hidden md:block font-black uppercase tracking-widest ${isActive ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>{label}</span>
-                                    </>
-                                )}
+                                <FaQrcode size={32} />
                             </NavLink>
-                        ))}
+                        </div>
+
+                        {/* Dự chi */}
+                        <NavLink
+                            to="/budget"
+                            className={({ isActive }) =>
+                                `flex flex-col items-center gap-1 transition-all flex-1 ${isActive ? 'text-primary' : 'text-slate-400'}`
+                            }
+                        >
+                            <FaChartPie size={22} />
+                            <span className="text-[10px] font-bold">Dự chi</span>
+                        </NavLink>
+
+                        {/* Other Menu Toggle */}
+                        <button
+                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                            className={`flex flex-col items-center gap-1 transition-all flex-1 ${isMobileMenuOpen ? 'text-primary' : 'text-slate-400'}`}
+                        >
+                            <FaBars size={22} />
+                            <span className="text-[10px] font-bold">Khác</span>
+                        </button>
                     </div>
                 </nav>
+
+                {/* Mobile Full Menu Overlay (Left Side Drawer) */}
+                <AnimatePresence>
+                    {isMobileMenuOpen && (
+                        <>
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] lg:hidden"
+                            />
+                            <motion.div
+                                initial={{ x: '-100%' }}
+                                animate={{ x: 0 }}
+                                exit={{ x: '-100%' }}
+                                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                                className="fixed inset-y-0 left-0 w-[80%] max-w-xs bg-white dark:bg-slate-900 shadow-2xl z-[70] lg:hidden flex flex-col"
+                            >
+                                <div className="p-8 border-b border-slate-100 dark:border-slate-800">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="size-10 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/30">
+                                            <FaMagic size={24} />
+                                        </div>
+                                        <span className="text-xl font-black tracking-tight dark:text-white">FamilyOS</span>
+                                    </div>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Hệ điều hành gia đình</p>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto p-6 space-y-2">
+                                    {navItems.map(({ to, icon: Icon, label }) => (
+                                        <NavLink
+                                            key={to}
+                                            to={to}
+                                            onClick={() => setIsMobileMenuOpen(false)}
+                                            className={({ isActive }) =>
+                                                `flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all ${isActive
+                                                    ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                                                    : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                                }`
+                                            }
+                                        >
+                                            <Icon size={22} />
+                                            <span>{label}</span>
+                                        </NavLink>
+                                    ))}
+                                </div>
+
+                                <div className="p-6 border-t border-slate-100 dark:border-slate-800">
+                                    <button
+                                        onClick={handleSignOut}
+                                        className="flex items-center gap-4 px-5 py-4 w-full rounded-2xl font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+                                    >
+                                        <FaSignOutAlt size={22} />
+                                        <span>Đăng xuất</span>
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </>
+                    )}
+                </AnimatePresence>
             </div>
             <AIChatBubble />
         </div>

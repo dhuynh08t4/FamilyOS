@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import {
     format,
     startOfMonth,
@@ -28,9 +27,11 @@ import {
     FaTimes,
     FaCheck
 } from 'react-icons/fa';
-import { supabase } from '../lib/supabase';
-import { getLunarDate, getSolarDate, getDaysInLunarMonth } from '../utils/lunar';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
+import { supabase } from '../lib/supabase';
+import { getLunarDate } from '../utils/lunar';
+import { CalendarPicker } from '../components/CalendarPicker';
 
 interface Event {
     id: string;
@@ -39,18 +40,16 @@ interface Event {
     is_lunar: boolean;
     start_date: string;
     repeat_type: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
-    repeat_config: any;
     reminders: number[];
-    user_id: string;
 }
 
 const Events: React.FC = () => {
     const [view, setView] = useState<'calendar' | 'list'>('calendar');
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [events, setEvents] = useState<Event[]>([]);
+    const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState<Partial<Event> | null>(null);
-    const [loading, setLoading] = useState(true);
     const [hoveredEvent, setHoveredEvent] = useState<{ event: Event, rect: DOMRect } | null>(null);
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
@@ -66,10 +65,13 @@ const Events: React.FC = () => {
             .select('*')
             .order('start_date', { ascending: true });
 
-        if (!error && data) {
-            setEvents(data);
-        }
+        if (!error && data) setEvents(data);
         setLoading(false);
+    };
+
+    const handleDeleteEvent = async (id: string) => {
+        const { error } = await supabase.from('events').delete().eq('id', id);
+        if (!error) fetchEvents();
     };
 
     const handleSaveEvent = async (e: React.FormEvent) => {
@@ -90,16 +92,11 @@ const Events: React.FC = () => {
 
         let error;
         if (editingEvent.id) {
-            const { error: err } = await supabase
-                .from('events')
-                .update(eventData)
-                .eq('id', editingEvent.id);
-            error = err;
+            const { error: eErr } = await supabase.from('events').update(eventData).eq('id', editingEvent.id);
+            error = eErr;
         } else {
-            const { error: err } = await supabase
-                .from('events')
-                .insert([eventData]);
-            error = err;
+            const { error: eErr } = await supabase.from('events').insert([eventData]);
+            error = eErr;
         }
 
         if (!error) {
@@ -109,47 +106,35 @@ const Events: React.FC = () => {
         }
     };
 
-    const handleDeleteEvent = async (id: string) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa sự kiện này?')) {
-            const { error } = await supabase
-                .from('events')
-                .delete()
-                .eq('id', id);
-            if (!error) fetchEvents();
-        }
-    };
-
     const renderHeader = () => (
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
             <div>
-                <h1 className="text-3xl font-black dark:text-white mb-1">Sự kiện</h1>
-                <p className="text-slate-500 font-medium">Quản lý lịch nhắc và các ngày kỷ niệm</p>
+                <h1 className="text-4xl font-black dark:text-white tracking-tight uppercase">Lịch Gia Đình</h1>
+                <p className="text-slate-500 font-medium mt-1">Quản lý sự kiện và ngày kỷ niệm quan trọng</p>
             </div>
-
-            <div className="flex items-center gap-3">
-                <div className="bg-white dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 flex shadow-sm">
+            <div className="flex flex-wrap items-center gap-3">
+                <div className="bg-white dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex">
                     <button
                         onClick={() => setView('calendar')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${view === 'calendar' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500'}`}
+                        className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${view === 'calendar' ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-105 z-10' : 'text-slate-400 hover:text-slate-600'}`}
                     >
-                        <FaCalendarAlt />
-                        <span>Lịch</span>
+                        <FaCalendarAlt /> Lịch
                     </button>
                     <button
                         onClick={() => setView('list')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${view === 'list' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-slate-500'}`}
+                        className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${view === 'list' ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-105 z-10' : 'text-slate-400 hover:text-slate-600'}`}
                     >
-                        <FaList />
-                        <span>Danh sách</span>
+                        <FaList /> Danh sách
                     </button>
                 </div>
-
                 <button
-                    onClick={() => { setEditingEvent({ repeat_type: 'none', reminders: [0], is_lunar: false, start_date: format(new Date(), 'yyyy-MM-dd') }); setIsModalOpen(true); }}
-                    className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-primary/30 hover:scale-105 transition-transform"
+                    onClick={() => {
+                        setEditingEvent({ repeat_type: 'none', reminders: [0], is_lunar: false, start_date: format(new Date(), 'yyyy-MM-dd') });
+                        setIsModalOpen(true);
+                    }}
+                    className="bg-primary text-white px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
                 >
-                    <FaPlus />
-                    <span>Thêm mới</span>
+                    <FaPlus size={14} /> Thêm mới
                 </button>
             </div>
         </div>
@@ -163,7 +148,6 @@ const Events: React.FC = () => {
         const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
         const dayLabels = ['Th 2', 'Th 3', 'Th 4', 'Th 5', 'Th 6', 'Th 7', 'CN'];
 
-        // Pre-process events once per calendar render
         const eventsWithInfo = events.map(e => {
             const sd = parseISO(e.start_date);
             return {
@@ -240,19 +224,6 @@ const Events: React.FC = () => {
                                                     );
                                                 })}
                                             </div>
-                                            <div className="p-4 border-t border-slate-100 dark:border-slate-800 mt-2 text-center">
-                                                <button
-                                                    onClick={() => {
-                                                        const now = new Date();
-                                                        setPickerYear(now.getFullYear());
-                                                        setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1, 12, 0, 0));
-                                                        setIsDatePickerOpen(false);
-                                                    }}
-                                                    className="text-[10px] font-black uppercase text-primary tracking-widest hover:underline"
-                                                >
-                                                    Về hiện tại
-                                                </button>
-                                            </div>
                                         </motion.div>
                                     </>
                                 )}
@@ -278,11 +249,8 @@ const Events: React.FC = () => {
 
                         const dayEvents = eventsWithInfo.filter(e => {
                             const { startDate, startLunar } = e;
-
-                            // 1. Initial check: Repeating events start from their startDate
                             if (day < startDate && !isSameDay(day, startDate)) return false;
 
-                            // 2. Specific Repeat Logic
                             if (e.repeat_type === 'none') {
                                 return isSameDay(day, startDate);
                             }
@@ -451,188 +419,128 @@ const Events: React.FC = () => {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setIsModalOpen(false)}
-                            className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+                            className="absolute inset-0 bg-slate-900/40 backdrop-blur-md"
                         />
                         <motion.div
-                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                            animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                            className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl relative z-10"
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-[3rem] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800"
                         >
-                            <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                                <h2 className="text-2xl font-black dark:text-white">{editingEvent?.id ? 'Chỉnh sửa sự kiện' : 'Thêm sự kiện mới'}</h2>
-                                <button onClick={() => setIsModalOpen(false)} className="size-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500"><FaTimes /></button>
-                            </div>
-
-                            <form onSubmit={handleSaveEvent} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Tên sự kiện</label>
-                                        <input
-                                            required
-                                            type="text"
-                                            value={editingEvent?.title || ''}
-                                            onChange={e => setEditingEvent({ ...editingEvent, title: e.target.value })}
-                                            placeholder="Nhập tên sự kiện..."
-                                            className="w-full bg-slate-50 dark:bg-slate-800/50 border-none rounded-2xl p-4 mt-2 font-bold focus:ring-2 focus:ring-primary h-14"
-                                        />
+                            <form onSubmit={handleSaveEvent}>
+                                <div className="p-8 space-y-6">
+                                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-6 mb-2">
+                                        <h2 className="text-2xl font-black dark:text-white uppercase tracking-tight">{editingEvent?.id ? 'Chỉnh sửa sự kiện' : 'Thêm sự kiện mới'}</h2>
+                                        <button type="button" onClick={() => setIsModalOpen(false)} className="size-10 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors">
+                                            <FaTimes />
+                                        </button>
                                     </div>
 
-                                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] p-6 space-y-6 border border-slate-100 dark:border-slate-800">
-                                        {/* Header with Type Toggle */}
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <div className={`size-8 rounded-xl flex items-center justify-center ${editingEvent?.is_lunar ? 'bg-orange-500 text-white' : 'bg-blue-500 text-white'}`}>
-                                                    {editingEvent?.is_lunar ? <FaMoon size={14} /> : <FaSun size={14} />}
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Chế độ lặp</p>
-                                                    <p className="text-xs font-bold dark:text-white">{editingEvent?.is_lunar ? 'Theo Âm lịch' : 'Theo Dương lịch'}</p>
-                                                </div>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => setEditingEvent({ ...editingEvent, is_lunar: !editingEvent?.is_lunar })}
-                                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${editingEvent?.is_lunar ? 'bg-orange-100 text-orange-600 hover:bg-orange-200' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
-                                            >
-                                                Đổi sang {editingEvent?.is_lunar ? 'Dương' : 'Âm'}
-                                            </button>
-                                        </div>
-
-                                        {/* Solar Input */}
+                                    <div className="grid gap-6">
                                         <div className="space-y-2">
-                                            <label className="text-[9px] font-black uppercase tracking-widest text-blue-400 flex items-center gap-2 ml-1">
-                                                <FaSun size={10} /> Dương lịch
-                                            </label>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Tiêu đề</label>
                                             <input
+                                                autoFocus
                                                 required
-                                                type="date"
-                                                value={editingEvent?.start_date || ''}
-                                                onChange={e => setEditingEvent({ ...editingEvent, start_date: e.target.value })}
-                                                className="w-full bg-white dark:bg-slate-900 border-2 border-transparent focus:border-blue-500 rounded-2xl p-4 font-bold transition-all shadow-sm h-14"
+                                                type="text"
+                                                placeholder="Ví dụ: Giỗ Ông Nội, Sinh Nhật Mẹ..."
+                                                value={editingEvent?.title || ''}
+                                                onChange={e => setEditingEvent({ ...editingEvent, title: e.target.value })}
+                                                className="w-full bg-slate-50 dark:bg-slate-800/50 border-none rounded-2xl p-4 font-bold focus:ring-2 focus:ring-primary h-14"
                                             />
                                         </div>
 
-                                        {/* Lunar Input */}
-                                        <div className="space-y-2">
-                                            <label className="text-[9px] font-black uppercase tracking-widest text-orange-400 flex items-center gap-2 ml-1">
-                                                <FaMoon size={10} /> Âm lịch
+                                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] p-6 space-y-6 border border-slate-100 dark:border-slate-800">
+                                            {/* Header with Type Toggle */}
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`size-8 rounded-xl flex items-center justify-center ${editingEvent?.is_lunar ? 'bg-orange-500 text-white' : 'bg-blue-500 text-white'}`}>
+                                                        {editingEvent?.is_lunar ? <FaMoon size={14} /> : <FaSun size={14} />}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Chế độ lặp</p>
+                                                        <p className="text-xs font-bold dark:text-white">{editingEvent?.is_lunar ? 'Theo Âm lịch' : 'Theo Dương lịch'}</p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEditingEvent({ ...editingEvent, is_lunar: !editingEvent?.is_lunar })}
+                                                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${editingEvent?.is_lunar ? 'bg-orange-100 text-orange-600 hover:bg-orange-200' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}
+                                                >
+                                                    Đổi sang {editingEvent?.is_lunar ? 'Dương' : 'Âm'}
+                                                </button>
+                                            </div>
+
+                                            {/* Solar Input */}
+                                            <div className="space-y-2">
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-blue-400 flex items-center gap-2 ml-1">
+                                                    <FaSun size={10} /> Dương lịch
+                                                </label>
+                                                <CalendarPicker
+                                                    value={editingEvent?.start_date || format(new Date(), 'yyyy-MM-dd')}
+                                                    onChange={val => setEditingEvent({ ...editingEvent, start_date: val })}
+                                                />
+                                            </div>
+
+                                            {/* Lunar Input */}
+                                            <div className="space-y-2">
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-orange-400 flex items-center gap-2 ml-1">
+                                                    <FaMoon size={10} /> Âm lịch
+                                                </label>
+                                                <CalendarPicker
+                                                    value={editingEvent?.start_date || format(new Date(), 'yyyy-MM-dd')}
+                                                    onChange={val => setEditingEvent({ ...editingEvent, start_date: val })}
+                                                    isLunar
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Lặp lại</label>
+                                            <div className="grid grid-cols-3 gap-2 mt-2">
+                                                {['none', 'daily', 'weekly', 'monthly', 'yearly'].map(t => (
+                                                    <button
+                                                        key={t}
+                                                        type="button"
+                                                        onClick={() => setEditingEvent({ ...editingEvent, repeat_type: t as any })}
+                                                        className={`p-3 rounded-xl text-xs font-black uppercase tracking-tight transition-all ${editingEvent?.repeat_type === t ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-slate-50 dark:bg-slate-800/50 text-slate-400'}`}
+                                                    >
+                                                        {t === 'none' ? 'Không' : t === 'daily' ? 'Ngày' : t === 'weekly' ? 'Tuần' : t === 'monthly' ? 'Tháng' : 'Năm'}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 flex items-center gap-2">
+                                                <FaBell size={10} /> Nhắc nhở
                                             </label>
-                                            <div className="grid grid-cols-3 gap-3">
-                                                <div>
-                                                    <select
-                                                        value={(() => {
-                                                            const d = parseISO(editingEvent?.start_date || format(new Date(), 'yyyy-MM-dd'));
-                                                            return getLunarDate(d.getDate(), d.getMonth() + 1, d.getFullYear()).day;
-                                                        })()}
-                                                        onChange={e => {
-                                                            const d = parseISO(editingEvent?.start_date || format(new Date(), 'yyyy-MM-dd'));
-                                                            const l = getLunarDate(d.getDate(), d.getMonth() + 1, d.getFullYear());
-                                                            const s = getSolarDate(Number(e.target.value), l.month, l.year);
-                                                            setEditingEvent({ ...editingEvent, start_date: `${s.year}-${String(s.month).padStart(2, '0')}-${String(s.day).padStart(2, '0')}` });
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                {[0, 1, 3, 7].map(days => (
+                                                    <button
+                                                        key={days}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const current = editingEvent?.reminders || [];
+                                                            const next = current.includes(days) ? current.filter(d => d !== days) : [...current, days];
+                                                            setEditingEvent({ ...editingEvent, reminders: next });
                                                         }}
-                                                        className="w-full bg-white dark:bg-slate-900 border-2 border-transparent focus:border-orange-500 rounded-2xl p-4 font-bold appearance-none transition-all shadow-sm h-14"
+                                                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${editingEvent?.reminders?.includes(days) ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-slate-50 dark:bg-slate-800 text-slate-400'}`}
                                                     >
-                                                        {Array.from({ length: 30 }, (_, i) => i + 1).map(d => (
-                                                            <option key={d} value={d}>{d}</option>
-                                                        ))}
-                                                    </select>
-                                                    <div className="text-[8px] font-bold text-center text-slate-400 mt-1">Ngày</div>
-                                                </div>
-                                                <div>
-                                                    <select
-                                                        value={(() => {
-                                                            const d = parseISO(editingEvent?.start_date || format(new Date(), 'yyyy-MM-dd'));
-                                                            return getLunarDate(d.getDate(), d.getMonth() + 1, d.getFullYear()).month;
-                                                        })()}
-                                                        onChange={e => {
-                                                            const d = parseISO(editingEvent?.start_date || format(new Date(), 'yyyy-MM-dd'));
-                                                            const l = getLunarDate(d.getDate(), d.getMonth() + 1, d.getFullYear());
-                                                            const s = getSolarDate(l.day, Number(e.target.value), l.year);
-                                                            setEditingEvent({ ...editingEvent, start_date: `${s.year}-${String(s.month).padStart(2, '0')}-${String(s.day).padStart(2, '0')}` });
-                                                        }}
-                                                        className="w-full bg-white dark:bg-slate-900 border-2 border-transparent focus:border-orange-500 rounded-2xl p-4 font-bold appearance-none transition-all shadow-sm h-14"
-                                                    >
-                                                        {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                                                            <option key={m} value={m}>{m}</option>
-                                                        ))}
-                                                    </select>
-                                                    <div className="text-[8px] font-bold text-center text-slate-400 mt-1">Tháng</div>
-                                                </div>
-                                                <div className="relative">
-                                                    <input
-                                                        type="number"
-                                                        value={(() => {
-                                                            const d = parseISO(editingEvent?.start_date || format(new Date(), 'yyyy-MM-dd'));
-                                                            return getLunarDate(d.getDate(), d.getMonth() + 1, d.getFullYear()).year;
-                                                        })()}
-                                                        onChange={e => {
-                                                            const d = parseISO(editingEvent?.start_date || format(new Date(), 'yyyy-MM-dd'));
-                                                            const l = getLunarDate(d.getDate(), d.getMonth() + 1, d.getFullYear());
-                                                            const s = getSolarDate(l.day, l.month, Number(e.target.value));
-                                                            setEditingEvent({ ...editingEvent, start_date: `${s.year}-${String(s.month).padStart(2, '0')}-${String(s.day).padStart(2, '0')}` });
-                                                        }}
-                                                        className="w-full bg-white dark:bg-slate-900 border-2 border-transparent focus:border-orange-500 rounded-2xl p-4 font-bold transition-all shadow-sm h-14"
-                                                    />
-                                                    <div className="text-[8px] font-bold text-center text-slate-400 mt-1">Năm</div>
-                                                </div>
+                                                        {days === 0 ? 'Đúng ngày' : `Trước ${days} ngày`}
+                                                    </button>
+                                                ))}
                                             </div>
                                         </div>
                                     </div>
-
-                                    <div>
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Lặp lại</label>
-                                        <div className="grid grid-cols-3 gap-2 mt-2">
-                                            {['none', 'daily', 'weekly', 'monthly', 'yearly'].map(t => (
-                                                <button
-                                                    key={t}
-                                                    type="button"
-                                                    onClick={() => setEditingEvent({ ...editingEvent, repeat_type: t as any })}
-                                                    className={`p-3 rounded-xl text-xs font-black uppercase tracking-tight transition-all ${editingEvent?.repeat_type === t ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-slate-50 dark:bg-slate-800/50 text-slate-400'}`}
-                                                >
-                                                    {t === 'none' ? 'Không' : t === 'daily' ? 'Ngày' : t === 'weekly' ? 'Tuần' : t === 'monthly' ? 'Tháng' : 'Năm'}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 flex items-center gap-2">
-                                            <FaBell size={10} /> Nhắc nhở
-                                        </label>
-                                        <div className="flex flex-wrap gap-2 mt-2">
-                                            {[0, 1, 7, 30].map(d => (
-                                                <button
-                                                    key={d}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        const current = editingEvent?.reminders || [];
-                                                        const next = current.includes(d) ? current.filter(x => x !== d) : [...current, d];
-                                                        setEditingEvent({ ...editingEvent, reminders: next });
-                                                    }}
-                                                    className={`px-4 py-3 rounded-xl text-xs font-bold transition-all border-2 ${editingEvent?.reminders?.includes(d) ? 'bg-primary/5 border-primary text-primary' : 'bg-slate-50 dark:bg-slate-800/50 border-transparent text-slate-400'}`}
-                                                >
-                                                    {d === 0 ? 'Đúng ngày' : d === 1 ? 'Trước 1 ngày' : d === 7 ? 'Trước 1 tuần' : 'Trước 1 tháng'}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Mô tả</label>
-                                        <textarea
-                                            value={editingEvent?.description || ''}
-                                            onChange={e => setEditingEvent({ ...editingEvent, description: e.target.value })}
-                                            placeholder="Nhập chi tiết..."
-                                            className="w-full bg-slate-50 dark:bg-slate-800/50 border-none rounded-2xl p-4 mt-2 font-bold focus:ring-2 focus:ring-primary min-h-[100px]"
-                                        />
-                                    </div>
                                 </div>
 
-                                <div className="flex gap-4 pt-4">
-                                    <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 font-black hover:bg-slate-200 transition-colors">Hủy</button>
-                                    <button type="submit" className="flex-2 h-14 rounded-2xl bg-primary text-white font-black shadow-lg shadow-primary/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all px-8">
-                                        <FaCheck /> Lưu sự kiện
+                                <div className="p-8 bg-slate-50 dark:bg-slate-800/30 flex gap-3">
+                                    <button
+                                        type="submit"
+                                        className="flex-1 bg-primary text-white py-4 rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <FaCheck /> {editingEvent?.id ? 'Cập nhật' : 'Lưu sự kiện'}
                                     </button>
                                 </div>
                             </form>
@@ -641,57 +549,43 @@ const Events: React.FC = () => {
                 )}
             </AnimatePresence>
 
-            {hoveredEvent && createPortal(
+            {/* Hover Tooltip Portal */}
+            {hoveredEvent && typeof document !== 'undefined' && createPortal(
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.9, x: "-50%", y: "-90%" }}
-                    animate={{ opacity: 1, scale: 1, x: "-50%", y: "-100%" }}
+                    initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
                     style={{
                         position: 'fixed',
                         top: hoveredEvent.rect.top - 12,
                         left: hoveredEvent.rect.left + hoveredEvent.rect.width / 2,
+                        translateX: '-50%',
+                        translateY: '-100%',
                         zIndex: 9999,
                     }}
-                    className="w-56 p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700 pointer-events-none"
+                    className="pointer-events-none"
                 >
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className={`size-6 rounded-lg flex items-center justify-center text-[10px] ${hoveredEvent.event.is_lunar ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
-                            {hoveredEvent.event.is_lunar ? <FaMoon /> : <FaSun />}
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            {hoveredEvent.event.is_lunar ? 'Âm lịch' : 'Dương lịch'}
-                        </span>
-                    </div>
-                    <p className="text-sm font-black dark:text-white mb-1">{hoveredEvent.event.title}</p>
-
-                    <div className="mb-2">
-                        {hoveredEvent.event.is_lunar ? (
-                            <div className="space-y-1">
-                                <p className="text-xs font-bold text-orange-600 flex items-center gap-1">
+                    <div className="bg-slate-900 dark:bg-white p-4 rounded-2xl shadow-2xl min-w-[200px] border border-slate-800 dark:border-slate-200 relative">
+                        <p className="text-white dark:text-slate-900 font-black text-sm uppercase tracking-tight">{hoveredEvent.event.title}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                            {hoveredEvent.event.is_lunar ? (
+                                <span className="text-[10px] font-black text-orange-400 uppercase flex items-center gap-1">
                                     <FaMoon size={8} /> {(() => {
                                         const d = parseISO(hoveredEvent.event.start_date);
                                         const l = getLunarDate(d.getDate(), d.getMonth() + 1, d.getFullYear());
                                         return `${l.day}/${l.month} Âm lịch`;
                                     })()}
-                                </p>
-                                <p className="text-[10px] text-slate-400">Dương: {format(parseISO(hoveredEvent.event.start_date), 'dd/MM/yyyy')}</p>
-                            </div>
-                        ) : (
-                            <p className="text-xs font-bold text-blue-600 flex items-center gap-1">
-                                <FaSun size={8} /> {format(parseISO(hoveredEvent.event.start_date), 'dd/MM/yyyy')}
-                            </p>
-                        )}
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-slate-50 dark:border-slate-700/50 flex items-center gap-3">
-                        <div className="px-2 py-0.5 bg-slate-100 dark:bg-slate-900 rounded text-[10px] font-black uppercase text-slate-500">
-                            {hoveredEvent.event.repeat_type === 'none' ? 'Một lần' : `Lặp ${hoveredEvent.event.repeat_type}`}
+                                </span>
+                            ) : (
+                                <span className="text-[10px] font-black text-blue-400 uppercase flex items-center gap-1">
+                                    <FaSun size={8} /> {format(parseISO(hoveredEvent.event.start_date), 'dd/MM/yyyy')}
+                                </span>
+                            )}
                         </div>
-                        {hoveredEvent.event.reminders.length > 0 && (
-                            <div className="flex items-center gap-1 text-primary text-[10px] font-bold">
-                                <FaBell size={10} /> {hoveredEvent.event.reminders.length} nhắc
-                            </div>
+                        {hoveredEvent.event.description && (
+                            <p className="text-slate-400 dark:text-slate-500 text-[10px] mt-2 font-medium line-clamp-2">{hoveredEvent.event.description}</p>
                         )}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-900 dark:border-t-white" />
                     </div>
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-white dark:border-t-slate-800" />
                 </motion.div>,
                 document.body
             )}

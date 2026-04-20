@@ -84,14 +84,10 @@ function getNewMoonDay(k: number, timezone: number): number {
 }
 
 function getLunarMonth11(year: number, timezone: number): number {
-    const off = Math.floor((year - 2000) * 12.3685);
-    let k = off - 2;
-    while (true) {
-        const jdn = getNewMoonDay(k, timezone);
-        const sunLong = getSunLongitude(jdn);
-        if (sunLong >= 240 && sunLong <= 300) break;
-        k++;
-    }
+    const jdWS = jdFromDate(21, 12, year);
+    let k = Math.floor((jdWS - 2451545) / 29.530588853);
+    while (getNewMoonDay(k + 1, timezone) <= jdWS) k++;
+    while (getNewMoonDay(k, timezone) > jdWS) k--;
     return k;
 }
 
@@ -111,25 +107,42 @@ function getLeapMonthOffset(a11: number, timezone: number): number {
 export function getLunarDate(dd: number, mm: number, yy: number): LunarDate {
     const timezone = 7;
     const day = Math.floor(jdFromDate(dd, mm, yy));
-    let k = Math.floor((yy - 2000) * 12.3685) - 2;
-    while (getNewMoonDay(k, timezone) <= day) k++;
-    k--;
+    let k = Math.floor((day - 2451545) / 29.530588853);
+    while (getNewMoonDay(k + 1, timezone) <= day) k++;
+    while (getNewMoonDay(k, timezone) > day) k--;
+    
     const nm3 = getNewMoonDay(k, timezone);
     const lunarDay = day - nm3 + 1;
 
+    // Accurate base a11 for mCount calculation
     let a11 = getLunarMonth11(yy, timezone);
     if (day < getNewMoonDay(a11, timezone)) a11 = getLunarMonth11(yy - 1, timezone);
 
+    // Robust Lunar Year Calculation
+    const a11_of_prev_year = getLunarMonth11(yy - 1, timezone);
+    let m1_offset = a11_of_prev_year + 2;
+    const leap_before = getLeapMonthOffset(a11_of_prev_year, timezone);
+    if (leap_before !== -1 && leap_before <= a11_of_prev_year + 2) m1_offset++;
+    const jdn_m1_this_year = getNewMoonDay(m1_offset, timezone);
+
+    let lunarYear = yy;
+    if (day < jdn_m1_this_year) {
+        lunarYear = yy - 1;
+    } else {
+        const a11_of_this_year = getLunarMonth11(yy, timezone);
+        let m1_next_offset = a11_of_this_year + 2;
+        const leap_this = getLeapMonthOffset(a11_of_this_year, timezone);
+        if (leap_this !== -1 && leap_this <= a11_of_this_year + 2) m1_next_offset++;
+        const jdn_m1_next_year = getNewMoonDay(m1_next_offset, timezone);
+        if (day >= jdn_m1_next_year) lunarYear = yy + 1;
+    }
+
     const leapMonthConfig = getLeapMonthOffset(a11, timezone);
     let mCount = k - a11;
-    const isLeap = (leapMonthConfig !== -1 && k === leapMonthConfig);
     if (leapMonthConfig !== -1 && k > leapMonthConfig) mCount--;
-    const m = (mCount + 10) % 12 + 1;
     
-    // Simplifed year logic
-    let lunarYear = yy;
-    if (m >= 11 && mm < 6) lunarYear = yy - 1;
-    if (m <= 2 && mm > 10) lunarYear = yy + 1;
+    const isLeap = (leapMonthConfig !== -1 && k === leapMonthConfig);
+    const m = (mCount + 10) % 12 + 1;
 
     return { day: lunarDay, month: m, year: lunarYear, leap: isLeap };
 }

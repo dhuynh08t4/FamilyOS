@@ -1,4 +1,4 @@
-import { FaBell, FaSearch, FaQrcode, FaStickyNote, FaCommentDots, FaClock, FaUser, FaSpinner, FaThumbtack, FaWallet } from 'react-icons/fa';
+import { FaBell, FaSearch, FaQrcode, FaStickyNote, FaCommentDots, FaClock, FaUser, FaSpinner, FaThumbtack, FaWallet, FaMoon, FaSun } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
@@ -12,6 +12,7 @@ const Dashboard: React.FC = () => {
     const [stats, setStats] = useState({ spent: 0, budget: 0 });
     const [recentNotes, setRecentNotes] = useState<any[]>([]);
     const [activities, setActivities] = useState<any[]>([]);
+    const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -47,9 +48,10 @@ const Dashboard: React.FC = () => {
             setRecentNotes(notes || []);
 
             // 4. Activities (Messages + Transactions)
-            const [msgs, recentTrans] = await Promise.all([
+            const [msgs, recentTrans, evts] = await Promise.all([
                 supabase.from('messages').select('*, profiles(full_name, nice_name)').order('created_at', { ascending: false }).limit(3),
-                supabase.from('transactions').select('*, profiles(full_name, nice_name)').order('created_at', { ascending: false }).limit(3)
+                supabase.from('transactions').select('*, profiles(full_name, nice_name)').order('created_at', { ascending: false }).limit(3),
+                supabase.from('events').select('*').gte('start_date', formatDateLocal(new Date())).order('start_date', { ascending: true }).limit(3)
             ]);
 
             const combined = [
@@ -58,6 +60,7 @@ const Dashboard: React.FC = () => {
             ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5);
 
             setActivities(combined);
+            setUpcomingEvents(evts.data || []);
 
             setLoading(false);
         };
@@ -136,6 +139,40 @@ const Dashboard: React.FC = () => {
                         <span className="text-xs font-bold">Trò chuyện</span>
                     </button>
                 </div>
+            </section>
+
+            {/* Upcoming Events Section */}
+            <section>
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-bold">Sự kiện sắp tới</h2>
+                    <button onClick={() => navigate('/events')} className="text-primary text-sm font-bold active:opacity-70">Xem lịch</button>
+                </div>
+                {upcomingEvents.length > 0 ? (
+                    <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none">
+                        {upcomingEvents.map((event) => (
+                            <div
+                                key={event.id}
+                                onClick={() => navigate('/events')}
+                                className="min-w-[200px] p-4 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-3 cursor-pointer hover:shadow-md transition-all active:scale-95"
+                            >
+                                <div className={`size-10 rounded-xl flex items-center justify-center text-lg ${event.is_lunar ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
+                                    {event.is_lunar ? <FaMoon size={18} /> : <FaSun size={18} />}
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-bold truncate">{event.title}</p>
+                                    <p className="text-[10px] text-slate-400 font-medium">
+                                        {new Date(event.start_date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                                        {event.is_lunar && ' (Âm)'}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="py-6 text-center bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                        <p className="text-xs text-slate-400 font-medium">Không có sự kiện sắp tới.</p>
+                    </div>
+                )}
             </section>
 
             {/* Spending Progress Card */}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
     FaThLarge, FaWallet, FaStickyNote, FaCommentDots, FaCog,
-    FaSignOutAlt, FaUser, FaBell, FaSearch, FaBars, FaTimes, FaChevronRight, FaMagic, FaPalette, FaQrcode, FaChartPie
+    FaSignOutAlt, FaUser, FaBell, FaSearch, FaBars, FaTimes, FaChevronRight, FaMagic, FaPalette, FaQrcode, FaChartPie, FaCalendarAlt
 } from 'react-icons/fa';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types';
@@ -29,6 +29,7 @@ const Layout: React.FC = () => {
         { to: '/wallet', icon: FaWallet, label: 'Ví' },
         { to: '/budget', icon: FaChartPie, label: 'Dự chi' },
         { to: '/scan', icon: FaQrcode, label: 'Quét' },
+        { to: '/events', icon: FaCalendarAlt, label: 'Sự kiện' },
         { to: '/notes', icon: FaStickyNote, label: 'Ghi chú' },
         { to: '/chat', icon: FaCommentDots, label: 'Tin nhắn' },
         { to: '/settings', icon: FaCog, label: 'Cài đặt' },

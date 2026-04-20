@@ -9,6 +9,7 @@ Mô-đun Sự kiện giúp bạn quản lý các lịch hẹn, ngày kỷ niệm
 ## 2. Chọn ngày Dương lịch vs Âm lịch
 - Trong Modal thêm sự kiện, bạn sẽ thấy cả hai phần: **Dương lịch** và **Âm lịch**.
 - Bạn có thể nhập ngày ở bất kỳ phần nào, phần còn lại sẽ tự động cập nhật theo.
+- **Mẹo**: Nhấn trực tiếp vào **Tháng/Năm** trên tiêu đề của bảng chọn ngày để chọn nhanh từ danh sách.
 - **Chế độ lặp**: Nhấn nút "Đổi sang Âm/Dương" ở trên cùng để chọn sự kiện này sẽ lặp theo chu kỳ nào (Ví dụ: Giỗ lặp theo Âm lịch, Sinh nhật lặp theo Dương lịch).
 
 ## 3. Cài đặt nhắc nhở

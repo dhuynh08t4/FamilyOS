@@ -11,6 +11,7 @@ Secure authentication system using Supabase Auth and personalized user profiles 
     - Username management.
     - Role visibility.
 - **Auth Guard**: Protected routes that redirect to login if no session exists.
+- **Sign Out**: Sign out button is temporarily disabled in the sidebar layout.
 - **Responsive Profile Editor**: Single-column mobile view, card-based desktop view.
 
 ## Technical Details

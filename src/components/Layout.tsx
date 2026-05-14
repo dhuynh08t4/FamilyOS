@@ -2,16 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
     FaThLarge, FaWallet, FaStickyNote, FaCommentDots, FaCog,
-    FaSignOutAlt, FaUser, FaBell, FaSearch, FaBars, FaTimes, FaChevronRight, FaMagic, FaPalette, FaQrcode, FaChartPie, FaCalendarAlt
+    FaSignOutAlt, FaUser, FaBell, FaSearch, FaBars, FaTimes, FaChevronRight, FaMagic, FaPalette, FaQrcode, FaChartPie, FaCalendarAlt, FaWifi
 } from 'react-icons/fa';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types';
 import { ThemeSelector } from './ThemeSelector';
 import AIChatBubble from './AIChatBubble';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNetwork } from '../hooks/useNetwork';
 
 
 const Layout: React.FC = () => {
+    const isOnline = useNetwork();
     const navigate = useNavigate();
     const location = useLocation();
     const [profile, setProfile] = useState<Profile | null>(null);
@@ -129,7 +131,7 @@ const Layout: React.FC = () => {
                     </nav>
                 </div>
 
-                <div className="mt-auto p-8 border-t border-slate-100 dark:border-slate-800">
+                {/* <div className="mt-auto p-8 border-t border-slate-100 dark:border-slate-800">
                     <button
                         onClick={handleSignOut}
                         className="flex items-center gap-3 px-4 py-3 w-full rounded-2xl font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
@@ -137,7 +139,7 @@ const Layout: React.FC = () => {
                         <FaSignOutAlt size={22} />
                         <span>Đăng xuất</span>
                     </button>
-                </div>
+                </div> */}
             </aside>
 
             {/* Main Content Area */}
@@ -319,6 +321,20 @@ const Layout: React.FC = () => {
                         </>
                     )}
                 </header>
+
+                <AnimatePresence>
+                    {!isOnline && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="bg-amber-500 text-white px-6 py-2.5 flex items-center justify-center gap-2 text-sm font-bold shadow-md shrink-0 z-30"
+                        >
+                            <FaWifi className="animate-pulse" size={16} />
+                            <span>Bạn đang ngoại tuyến. Một số tính năng sẽ hoạt động ở chế độ chỉ đọc.</span>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* Content with Custom Scrollbar */}
                 <main className="flex-1 overflow-y-auto w-full custom-scrollbar">

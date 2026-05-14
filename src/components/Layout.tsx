@@ -131,7 +131,7 @@ const Layout: React.FC = () => {
                     </nav>
                 </div>
 
-                <div className="mt-auto p-8 border-t border-slate-100 dark:border-slate-800">
+                {/* <div className="mt-auto p-8 border-t border-slate-100 dark:border-slate-800">
                     <button
                         onClick={handleSignOut}
                         className="flex items-center gap-3 px-4 py-3 w-full rounded-2xl font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
@@ -139,7 +139,7 @@ const Layout: React.FC = () => {
                         <FaSignOutAlt size={22} />
                         <span>Đăng xuất</span>
                     </button>
-                </div>
+                </div> */}
             </aside>
 
             {/* Main Content Area */}

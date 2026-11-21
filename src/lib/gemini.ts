@@ -2,6 +2,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { supabase } from "./supabase";
 
 export const GEMINI_MODELS = [
+    'gemini-3.8-flash',
+    'gemini-3.5-flash-lite',
     'gemini-3-flash-preview',
     'gemini-3-pro-preview',
     'gemini-flash-latest',
@@ -35,7 +37,7 @@ export async function getGeminiApiKeys(): Promise<string[]> {
     return rawKeys.split('\n').map(k => k.trim()).filter(k => k.length > 0);
 }
 
-export async function generateSmartContent(prompt: string, inlineData: { data: string, mimeType: string }, selectedModel: string) {
+export async function generateSmartContent(prompt: string, inlineData?: { data: string, mimeType: string }, selectedModel: string = GEMINI_MODELS[0]) {
     const keys = await getGeminiApiKeys();
     if (keys.length === 0) throw new Error("No valid API keys found.");
 
@@ -55,10 +57,12 @@ export async function generateSmartContent(prompt: string, inlineData: { data: s
                 const genAI = new GoogleGenerativeAI(apiKey);
                 const model = genAI.getGenerativeModel({ model: modelName });
 
-                const result = await model.generateContent([
-                    prompt,
-                    { inlineData }
-                ]);
+                const contents: any[] = [prompt];
+                if (inlineData && inlineData.data && inlineData.data.trim() !== '') {
+                    contents.push({ inlineData });
+                }
+
+                const result = await model.generateContent(contents);
 
                 return result; // Success!
 

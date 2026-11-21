@@ -5,6 +5,7 @@ A comprehensive tool for planning and tracking monthly budgets against actual sp
 
 ## Features
 - **Plan Management**: Create, Edit, and Delete budget plans.
+- **Statistics Overview**: Thống kê trực quan: Tổng dự kiến, Tổng đã chi, Tổng chưa chi theo kế hoạch và thanh tiến độ thực hiện.
 - **Transaction Linking**: Link existing transactions to a budget plan or create new ones directly within the plan.
 - **Visual Progress**: Progress bars showing "Planned vs. Actual" spending with percentage indicators.
 - **AI FinAssistant**: Conversational interface to create plans or log expenses instantly using natural language.

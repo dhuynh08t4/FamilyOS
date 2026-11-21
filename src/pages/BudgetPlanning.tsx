@@ -306,6 +306,10 @@ const BudgetPlanning: React.FC = () => {
 
     // Derived State
     const activePlans = plans.filter(p => p.status === 'active');
+    const totalPlanned = activePlans.reduce((sum, p) => sum + (Number(p.planned_amount) || 0), 0);
+    const totalSpent = activePlans.reduce((sum, p) => sum + getPlanProgress(p.id), 0);
+    const totalUnspent = Math.max(0, totalPlanned - totalSpent);
+    const spentPercent = totalPlanned > 0 ? (totalSpent / totalPlanned) * 100 : 0;
 
     const completedPlans = plans.filter(p => {
         if (p.status !== 'completed') return false;
@@ -649,6 +653,76 @@ const BudgetPlanning: React.FC = () => {
             </header>
 
             <main className="max-w-6xl mx-auto px-6 py-8 space-y-12">
+                {/* Statistics Overview */}
+                <section className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-100 dark:border-slate-800 shadow-sm space-y-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {/* Tổng dự kiến */}
+                        <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
+                            <div className="space-y-1 min-w-0">
+                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tổng dự kiến</p>
+                                <p className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white truncate">
+                                    {totalPlanned.toLocaleString('vi-VN')} đ
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                                    {activePlans.length} mục dự chi
+                                </p>
+                            </div>
+                            <div className="size-12 rounded-2xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-sm">
+                                <FaMoneyBillWave size={20} />
+                            </div>
+                        </div>
+
+                        {/* Tổng đã chi */}
+                        <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
+                            <div className="space-y-1 min-w-0">
+                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tổng đã chi</p>
+                                <p className="text-xl lg:text-2xl font-black text-amber-600 dark:text-amber-400 truncate">
+                                    {totalSpent.toLocaleString('vi-VN')} đ
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                                    {spentPercent.toFixed(1)}% ngân sách
+                                </p>
+                            </div>
+                            <div className="size-12 rounded-2xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-sm">
+                                <FaShoppingCart size={20} />
+                            </div>
+                        </div>
+
+                        {/* Tổng chưa chi theo kế hoạch */}
+                        <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
+                            <div className="space-y-1 min-w-0">
+                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tổng chưa chi theo kế hoạch</p>
+                                <p className={`text-xl lg:text-2xl font-black truncate ${totalPlanned >= totalSpent ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
+                                    {totalUnspent.toLocaleString('vi-VN')} đ
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+                                    {totalPlanned >= totalSpent
+                                        ? `Còn lại ${totalPlanned > 0 ? (((totalPlanned - totalSpent) / totalPlanned) * 100).toFixed(1) : 0}%`
+                                        : `Vượt kế hoạch ${(totalSpent - totalPlanned).toLocaleString('vi-VN')} đ`}
+                                </p>
+                            </div>
+                            <div className={`size-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${totalPlanned >= totalSpent ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-500'}`}>
+                                <FaCheckCircle size={20} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="pt-2">
+                        <div className="flex justify-between items-center text-xs font-bold text-slate-400 mb-2">
+                            <span>Tiến độ thực hiện kế hoạch</span>
+                            <span className={spentPercent > 100 ? 'text-rose-500 font-black' : 'text-slate-600 dark:text-slate-300'}>
+                                {spentPercent.toFixed(1)}%
+                            </span>
+                        </div>
+                        <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <div
+                                className={`h-full rounded-full transition-all duration-500 ${spentPercent > 100 ? 'bg-rose-500' : spentPercent === 100 ? 'bg-emerald-500' : 'bg-primary'}`}
+                                style={{ width: `${Math.min(spentPercent, 100)}%` }}
+                            ></div>
+                        </div>
+                    </div>
+                </section>
 
                 {/* Active Plans Section */}
                 <section>

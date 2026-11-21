@@ -21,6 +21,6 @@ A smart digital companion integrated into FamilyOS to help manage finances, note
 - **Dual Flow**: Supports both direct text responses and structured JSON-based database actions.
 
 ## Technical Stack
-- **AI Core**: Google Gemini API via `processAIRequest`.
+- **AI Core**: Google Gemini API via `processAIRequest` (Model mới nhất: `gemini-3.8-flash` kết hợp cơ chế fallback xoay vòng model).
 - **Infrastructure**: Supabase for data persistence and `user_settings` for preferences.
 - **Real-time**: Dispatches custom events (`family-os-refresh`) to sync UI state after AI actions.

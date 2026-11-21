@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { generateSmartContent } from './gemini';
+import { generateSmartContent, GEMINI_MODELS } from './gemini';
 import { formatDateLocal } from '../utils/date';
 
 export interface AIAction {
@@ -66,7 +66,7 @@ export async function processAIRequest(userInput: string, userId: string) {
     const result = await generateSmartContent(
         `${AI_SYSTEM_PROMPT}\n${context}\nUser: ${userInput}`,
         { data: '', mimeType: 'text/plain' },
-        'gemini-flash-latest'
+        GEMINI_MODELS[0]
     );
 
     const text = result.response.text();
